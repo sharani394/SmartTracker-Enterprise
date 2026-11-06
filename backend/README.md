@@ -28,6 +28,8 @@ Copy the generated value into `JWT_SECRET` in `backend/.env`. The value must con
 
 Edit `MONGODB_URI` if MongoDB is not listening at `mongodb://127.0.0.1:27017/smarttracker`.
 
+For the collections, relationships, indexes, and data-sharing notes, see the [database reference](../docs/database.md).
+
 To start a local MongoDB Community Server, use your operating system's MongoDB service manager. On systems with the `mongod` executable and a writable database directory, a foreground development instance can be started with:
 
 ```sh
