@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../src/app');
-const { connectDatabase, disconnectDatabase } = require('../src/config/database');
+const { connectDatabase, disconnectDatabase, removeLegacyTicketSequenceIndex } = require('../src/config/database');
 const Organisation = require('../src/models/Organisation');
 const User = require('../src/models/User');
 const Session = require('../src/models/Session');
@@ -73,6 +73,19 @@ beforeEach(async () => {
   await Promise.all([Organisation.deleteMany({}), User.deleteMany({}), Session.deleteMany({}), EmailVerification.deleteMany({}), PrimaryAdminCode.deleteMany({}), Department.deleteMany({}), AuditEvent.deleteMany({}), AdminInvitation.deleteMany({}), Ticket.deleteMany({}), TicketComment.deleteMany({}), TicketActivity.deleteMany({}), Notification.deleteMany({})]);
 });
 after(async () => { await disconnectDatabase(); });
+
+test('database startup removes only the obsolete unique ticket sequence index', async () => {
+  await Ticket.collection.createIndex(
+    { organisationId: 1, sequence: 1 },
+    { unique: true, name: 'organisationId_1_sequence_1' }
+  );
+
+  await removeLegacyTicketSequenceIndex();
+
+  const indexes = await Ticket.collection.indexes();
+  assert.equal(indexes.some((index) => index.name === 'organisationId_1_sequence_1'), false);
+  assert.equal(indexes.some((index) => index.name === 'organisationId_1_ticketNumber_1' && index.unique), true);
+});
 
 test('ticket lifecycle enforces role ownership, tracks activity, separates internal notes and scopes notifications', async () => {
   const org = await ownerFor('life');
