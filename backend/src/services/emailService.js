@@ -15,6 +15,10 @@ function getTransporter() {
   });
 }
 
+function isConfigured() {
+  return Boolean(config.smtpHost && config.smtpUser && config.smtpPassword && config.emailFrom);
+}
+
 async function sendVerificationCode({ email, fullName, code, expiresInMinutes }) {
   const transporter = getTransporter();
   await transporter.sendMail({
@@ -23,6 +27,22 @@ async function sendVerificationCode({ email, fullName, code, expiresInMinutes })
     subject: 'Verify your SmartTracker email address',
     text: `Hello ${fullName},\n\nYour SmartTracker verification code is ${code}. It expires in ${expiresInMinutes} minutes. If you did not request this, you can ignore this email.`,
     html: `<p>Hello ${escapeHtml(fullName)},</p><p>Your SmartTracker verification code is <strong>${code}</strong>.</p><p>It expires in ${expiresInMinutes} minutes. If you did not request this, you can ignore this email.</p>`,
+  });
+}
+
+async function sendLoginAlert({ email, fullName, organisationName, ipAddress, userAgent, signedInAt }) {
+  const transporter = getTransporter();
+  const date = signedInAt.toISOString();
+  const safeName = escapeHtml(fullName);
+  const safeOrganisation = escapeHtml(organisationName);
+  const safeIpAddress = escapeHtml(ipAddress || 'Unavailable');
+  const safeUserAgent = escapeHtml(userAgent || 'Unavailable');
+  await transporter.sendMail({
+    from: config.emailFrom,
+    to: email,
+    subject: 'New sign-in to your SmartTracker account',
+    text: `Hello ${fullName},\n\nA successful sign-in to your SmartTracker account (${organisationName}) was detected.\n\nTime (UTC): ${date}\nIP address: ${ipAddress || 'Unavailable'}\nDevice: ${userAgent || 'Unavailable'}\n\nIf you do not recognize this activity, change your password and contact your organisation administrator.`,
+    html: `<p>Hello ${safeName},</p><p>A successful sign-in to your SmartTracker account (${safeOrganisation}) was detected.</p><ul><li>Time (UTC): ${escapeHtml(date)}</li><li>IP address: ${safeIpAddress}</li><li>Device: ${safeUserAgent}</li></ul><p>If you do not recognize this activity, change your password and contact your organisation administrator.</p>`,
   });
 }
 
@@ -54,4 +74,10 @@ function escapeHtml(value) {
   }[character]));
 }
 
-module.exports = { sendVerificationCode, sendPasswordResetCode, sendAdminInvitation };
+module.exports = {
+  isConfigured,
+  sendVerificationCode,
+  sendLoginAlert,
+  sendPasswordResetCode,
+  sendAdminInvitation,
+};

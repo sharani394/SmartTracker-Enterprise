@@ -81,6 +81,13 @@ async function updateSettings(req, res) {
     organisation.settings.memberRegistrationEnabled = req.body.memberRegistrationEnabled;
     changes.memberRegistrationEnabled = req.body.memberRegistrationEnabled;
   }
+  if (req.body.loginAlertsEnabled !== undefined) {
+    if (req.body.loginAlertsEnabled && !emailService.isConfigured()) {
+      throw new AppError('Configure SMTP email delivery before enabling sign-in alerts.', 503, 'EMAIL_NOT_CONFIGURED');
+    }
+    organisation.settings.loginAlertsEnabled = req.body.loginAlertsEnabled;
+    changes.loginAlertsEnabled = req.body.loginAlertsEnabled;
+  }
   if (!Object.keys(changes).length) {
     throw new AppError('Provide at least one organisation setting to update.', 400, 'EMPTY_UPDATE');
   }

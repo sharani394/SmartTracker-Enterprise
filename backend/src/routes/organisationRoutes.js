@@ -45,6 +45,7 @@ router.patch('/settings', authenticate, requirePermission('settings:manage'), [
   body('supportEmail').optional().custom((value) => value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)).withMessage('Enter a valid support email.'),
   body('timezone').optional().trim().isLength({ min: 1, max: 80 }),
   body('memberRegistrationEnabled').optional().isBoolean().toBoolean(),
+  body('loginAlertsEnabled').optional().isBoolean().toBoolean(),
   validateRequest,
 ], asyncHandler(operations.updateSettings));
 

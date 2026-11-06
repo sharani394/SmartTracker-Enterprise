@@ -8,7 +8,7 @@ Mongoose derives the collection names from the model names (lowercase, pluralize
 
 | Model / collection | Purpose and principal fields |
 | --- | --- |
-| `Organisation` / `organisations` | Tenant profile: `name`, `emailDomain`, `industry`, `country`, `settings` (`supportEmail`, `timezone`, `memberRegistrationEnabled`), `status`, and `ownerUserId`. |
+| `Organisation` / `organisations` | Tenant profile: `name`, `emailDomain`, `industry`, `country`, `settings` (`supportEmail`, `timezone`, `memberRegistrationEnabled`, `loginAlertsEnabled`), `status`, and `ownerUserId`. Login alerts are disabled by default; when enabled, successful password sign-ins trigger an email to the signing-in account. |
 | `User` / `users` | Tenant member: `organisationId`, `fullName`, `email`, `phone`, `passwordHash`, `role`, `requestedRole`, `permissions`, `status`, `emailVerifiedAt`, department/job profile fields, approval metadata, and password-change timestamp. |
 | `Department` / `departments` | Tenant department: `organisationId`, `name`, normalized `nameKey`, `description`, `status`, `createdBy`, and `updatedBy`. |
 | `Ticket` / `tickets` | Support request: tenant and ticket number, title/description, category, priority, status, assignment acceptance state, creator and employee details, department and agent details, rejection reason, and resolution time. |

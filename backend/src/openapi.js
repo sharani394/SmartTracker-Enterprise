@@ -75,6 +75,7 @@ const openApiDocument = {
         200: { description: 'Updated tenant settings.', content: json(ref('OrganisationSettingsResponse')) },
         400: errorResponse('Invalid timezone or settings.'), 401: errorResponse('Authentication is required.'),
         403: errorResponse('settings:manage is not delegated.'),
+        503: errorResponse('SMTP email delivery must be configured before enabling sign-in alerts.'),
       }, { operationId: 'updateOrganisationSettings', security: auth, requestBody: body('OrganisationSettingsUpdateRequest') }),
     },
     '/api/v1/organisations/internal-admins': {
@@ -176,7 +177,7 @@ const openApiDocument = {
     },
     '/api/v1/auth/login': {
       post: operation('Authentication', 'Sign in and create a session', {
-        200: { description: 'Authenticated user and access/refresh credentials.', content: json(ref('LoginResponse')) },
+        200: { description: 'Authenticated user and access/refresh credentials. Sends a sign-in email when organisation login alerts are enabled.', content: json(ref('LoginResponse')) },
         400: errorResponse('Invalid request body.'),
         401: errorResponse('Invalid email or password.'),
         403: errorResponse('Email, account, approval or organisation is not active.'),
@@ -559,6 +560,7 @@ const openApiDocument = {
         type: 'object', properties: {
           supportEmail: { type: 'string', format: 'email', nullable: true },
           timezone: { type: 'string', example: 'Asia/Kolkata' }, memberRegistrationEnabled: { type: 'boolean', default: true },
+          loginAlertsEnabled: { type: 'boolean', default: false },
         },
       },
       OrganisationSettingsUpdateRequest: {
@@ -566,6 +568,7 @@ const openApiDocument = {
           name: { type: 'string', example: 'Example Company' }, industry: { type: 'string', example: 'Technology' },
           country: { type: 'string', example: 'India' }, supportEmail: { type: 'string', format: 'email', example: 'help@example.org' },
           timezone: { type: 'string', example: 'Asia/Kolkata' }, memberRegistrationEnabled: { type: 'boolean' },
+          loginAlertsEnabled: { type: 'boolean' },
         },
       },
       OrganisationSettingsResponse: { type: 'object', properties: { organisation: ref('Organisation') } },

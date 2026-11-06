@@ -70,7 +70,7 @@ For automatic restart during development, run `npm run dev` from `backend`.
 | `EMAIL_FROM` | Required for email | Sender address, for example `SmartTracker <no-reply@example.org>`. |
 | `ADMIN_INVITATION_MINUTES` | `1440` | Internal Admin invitation code lifetime. |
 
-The SMTP sender must be authorized by your mail provider. Registration endpoints return an email delivery error if mail cannot be sent. The resend endpoint returns a generic response to avoid account enumeration; check the backend logs if an expected verification email does not arrive.
+The SMTP sender must be authorized by your mail provider. Registration endpoints return an email delivery error if mail cannot be sent. The resend endpoint returns a generic response to avoid account enumeration; check the backend logs if an expected verification email does not arrive. Owners can enable organisation-wide login alerts under Security & Access after the SMTP settings are configured. When enabled, each account receives an email after a successful password sign-in. A failed alert delivery is logged and does not block sign-in.
 
 ### Browser CORS
 
@@ -91,7 +91,7 @@ Swagger's **Authorize** button accepts a bearer access token after signing in. D
 | Method | Path | Access |
 | --- | --- | --- |
 | `POST` | `/api/v1/organisations` | Public registration; creates owner and sends email verification. |
-| `GET`, `PATCH` | `/api/v1/organisations/settings` | `settings:read` / `settings:manage`; organisation is derived from the session. Email domain is immutable here. |
+| `GET`, `PATCH` | `/api/v1/organisations/settings` | `settings:read` / `settings:manage`; organisation is derived from the session. Email domain is immutable here. `loginAlertsEnabled` controls successful sign-in email alerts and requires SMTP configuration. |
 | `GET`, `POST` | `/api/v1/organisations/internal-admins` | Owner or Primary Admin; invite or list tenant Internal Admins. |
 | `GET` | `/api/v1/organisations/primary-admin` | Owner or Primary Admin; reads the tenant's current Primary Admin details. |
 | `PATCH` | `/api/v1/organisations/internal-admins/{adminId}/permissions` | Owner or Primary Admin; grant only permissions the acting admin can hold. |

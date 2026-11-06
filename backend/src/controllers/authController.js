@@ -77,6 +77,23 @@ async function login(req, res) {
   }
 
   const session = await makeSession(user, req);
+  if (organisation.settings?.loginAlertsEnabled) {
+    try {
+      await emailService.sendLoginAlert({
+        email: user.email,
+        fullName: user.fullName,
+        organisationName: organisation.name,
+        ipAddress: String(req.ip || '').slice(0, 100),
+        userAgent: String(req.get('user-agent') || '').slice(0, 500),
+        signedInAt: new Date(),
+      });
+    } catch (error) {
+      console.error('New sign-in alert delivery failed.', {
+        userId: String(user._id),
+        error: error.message,
+      });
+    }
+  }
   res.set('Cache-Control', 'no-store');
   return res.json({ user: publicUser(user), session });
 }

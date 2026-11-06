@@ -9,26 +9,54 @@ import {
   Switch,
 } from 'react-native';
 import { organisationService } from '../../services/organisationService';
-import { apiMessage } from '../../utils/feedback';
+import { apiMessage, showMessage } from '../../utils/feedback';
 
 export default function OwnerAccessScreen({ navigation }) {
   const [primaryAdmin, setPrimaryAdmin] = useState(undefined);
   const [primaryAdminError, setPrimaryAdminError] = useState('');
+  const [loginAlertsEnabled, setLoginAlertsEnabled] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [savingLoginAlerts, setSavingLoginAlerts] = useState(false);
   const primaryAdminStatus = primaryAdmin?.status
     ? primaryAdmin.status.replaceAll('_', ' ').toLowerCase()
     : 'status unavailable';
 
   useEffect(() => {
     let active = true;
-    organisationService.getPrimaryAdmin()
-      .then((result) => {
-        if (active) setPrimaryAdmin(result.primaryAdmin || null);
-      })
-      .catch((error) => {
-        if (active) setPrimaryAdminError(apiMessage(error));
-      });
+    organisationService.getPrimaryAdmin().then((result) => {
+      if (active) setPrimaryAdmin(result.primaryAdmin || null);
+    }).catch((error) => {
+      if (active) setPrimaryAdminError(apiMessage(error));
+    });
+    organisationService.getSettings().then((result) => {
+      if (active) setLoginAlertsEnabled(Boolean(result.organisation.settings?.loginAlertsEnabled));
+    }).catch((error) => {
+      if (active) setSettingsError(apiMessage(error));
+    }).finally(() => {
+      if (active) setSettingsLoaded(true);
+    });
     return () => { active = false; };
   }, []);
+
+  const updateLoginAlerts = async (enabled) => {
+    setSavingLoginAlerts(true);
+    setSettingsError('');
+    try {
+      const result = await organisationService.updateSettings({ loginAlertsEnabled: enabled });
+      setLoginAlertsEnabled(Boolean(result.organisation.settings?.loginAlertsEnabled));
+      showMessage(
+        enabled ? 'Login alerts enabled' : 'Login alerts disabled',
+        enabled
+          ? 'Users will receive an email after each successful sign-in.'
+          : 'Users will no longer receive sign-in alert emails.'
+      );
+    } catch (error) {
+      showMessage('Could not update login alerts', apiMessage(error));
+    } finally {
+      setSavingLoginAlerts(false);
+    }
+  };
 
   const securityItems = [
     {
@@ -48,8 +76,16 @@ export default function OwnerAccessScreen({ navigation }) {
     },
     {
       title: 'Login Alerts',
-      description: 'Receive alerts about important sign-in activity.',
-      enabled: false, status: 'Not available in the connected API',
+      description: 'Email each user after every successful sign-in to their account.',
+      enabled: loginAlertsEnabled,
+      available: settingsLoaded && !settingsError,
+      status: settingsError
+        ? `Could not load setting: ${settingsError}`
+        : !settingsLoaded
+          ? 'Loading setting…'
+          : loginAlertsEnabled
+            ? 'Enabled for all organisation accounts'
+            : 'Disabled',
     },
   ];
 
@@ -74,7 +110,7 @@ export default function OwnerAccessScreen({ navigation }) {
           <Text style={styles.reviewText}>Core access controls enforced</Text>
         </View>
         <Text style={styles.smallNote}>
-          The backend enforces company-domain validation and organisation permissions. Two-factor and login-alert preferences are not exposed by the current API.
+          Company-domain validation and organisation permissions are enforced by the backend. Login alerts email each user after successful sign-in when enabled; SMTP must be configured. Two-factor authentication is not available.
         </Text>
       </View>
 
@@ -85,10 +121,23 @@ export default function OwnerAccessScreen({ navigation }) {
           <View style={styles.settingInfo}>
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardDescription}>{item.description}</Text>
-            <Text style={item.enabled ? styles.enabled : styles.disabled}>{item.status}</Text>
+            <Text
+              style={
+                item.enabled
+                  ? styles.enabled
+                  : item.title === 'Login Alerts'
+                    ? settingsError ? styles.disabled : styles.unavailable
+                    : styles.disabled
+              }
+            >
+              {item.status}
+            </Text>
           </View>
-          <Switch disabled
+          <Switch
+            disabled={item.title !== 'Login Alerts' || !item.available || savingLoginAlerts}
             value={item.enabled}
+            onValueChange={item.title === 'Login Alerts' ? updateLoginAlerts : undefined}
+            accessibilityLabel={item.title}
             trackColor={{ false: '#D8DEE9', true: '#AFC1FF' }}
             thumbColor={item.enabled ? '#3157D5' : '#FFFFFF'}
           />
@@ -166,6 +215,7 @@ const styles = StyleSheet.create({
   cardDescription: { color: '#8792A5', fontSize: 11, lineHeight: 17, marginTop: 5 },
   enabled: { color: '#16845B', fontSize: 10, fontWeight: '800', marginTop: 8 },
   disabled: { color: '#C0392B', fontSize: 10, fontWeight: '800', marginTop: 8 },
+  unavailable: { color: '#788499', fontSize: 10, fontWeight: '700', marginTop: 8 },
   actionButton: { backgroundColor: '#3157D5', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 },
   actionButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
   infoCard: { backgroundColor: '#FFF8E8', padding: 15, borderRadius: 12, marginTop: 17 },

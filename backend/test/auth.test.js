@@ -23,8 +23,13 @@ const emailService = require('../src/services/emailService');
 const sentCodes = [];
 const sentPasswordResetCodes = [];
 const sentInvitations = [];
+const sentLoginAlerts = [];
+emailService.isConfigured = () => true;
 emailService.sendVerificationCode = async ({ email, code }) => {
   sentCodes.push({ email, code });
+};
+emailService.sendLoginAlert = async (alert) => {
+  sentLoginAlerts.push(alert);
 };
 emailService.sendPasswordResetCode = async ({ email, code }) => {
   sentPasswordResetCodes.push({ email, code });
@@ -113,6 +118,7 @@ beforeEach(async () => {
   sentCodes.length = 0;
   sentPasswordResetCodes.length = 0;
   sentInvitations.length = 0;
+  sentLoginAlerts.length = 0;
   await Promise.all([
     Organisation.deleteMany({}), User.deleteMany({}), Session.deleteMany({}),
     EmailVerification.deleteMany({}), PrimaryAdminCode.deleteMany({}),
@@ -160,6 +166,72 @@ test('organisation registration creates a hashed owner account; email verificati
   const profile = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${login.body.session.accessToken}`);
   assert.equal(profile.status, 200);
   assert.equal(profile.body.organisation.emailDomain, domain);
+});
+
+test('owner can enable tenant sign-in alerts and successful logins email the signing-in user', async () => {
+  const owner = await registerOwner();
+  const ownerHeader = { Authorization: `Bearer ${owner.token}` };
+  const initialSettings = await request(app).get('/api/v1/organisations/settings').set(ownerHeader);
+  assert.equal(initialSettings.body.organisation.settings.loginAlertsEnabled, false);
+
+  const enabled = await request(app).patch('/api/v1/organisations/settings')
+    .set(ownerHeader).send({ loginAlertsEnabled: true });
+  assert.equal(enabled.status, 200, JSON.stringify(enabled.body));
+  assert.equal(enabled.body.organisation.settings.loginAlertsEnabled, true);
+
+  const login = await request(app).post('/api/v1/auth/login')
+    .set('user-agent', 'SmartTracker Demo Browser')
+    .send({ email: owner.email, password: 'OwnerPassword!2026' });
+  assert.equal(login.status, 200, JSON.stringify(login.body));
+  assert.equal(sentLoginAlerts.length, 1);
+  assert.equal(sentLoginAlerts[0].email, owner.email);
+  assert.equal(sentLoginAlerts[0].fullName, owner.owner.fullName);
+  assert.equal(sentLoginAlerts[0].organisationName, owner.organisationName);
+  assert.equal(sentLoginAlerts[0].userAgent, 'SmartTracker Demo Browser');
+  assert.ok(sentLoginAlerts[0].signedInAt instanceof Date);
+
+  await request(app).patch('/api/v1/organisations/settings')
+    .set(ownerHeader).send({ loginAlertsEnabled: false }).expect(200);
+  await request(app).post('/api/v1/auth/login')
+    .send({ email: owner.email, password: 'OwnerPassword!2026' }).expect(200);
+  assert.equal(sentLoginAlerts.length, 1);
+});
+
+test('login alerts require SMTP configuration and mail failures do not block sign-in', async () => {
+  const owner = await registerOwner();
+  const ownerHeader = { Authorization: `Bearer ${owner.token}` };
+  const configured = emailService.isConfigured;
+  const originalConsoleError = console.error;
+  const loggedErrors = [];
+  let unavailable;
+  try {
+    console.error = (...args) => loggedErrors.push(args);
+    emailService.isConfigured = () => false;
+    unavailable = await request(app).patch('/api/v1/organisations/settings')
+      .set(ownerHeader).send({ loginAlertsEnabled: true });
+  } finally {
+    emailService.isConfigured = configured;
+    console.error = originalConsoleError;
+  }
+  assert.equal(unavailable.status, 503);
+  assert.equal((await Organisation.findOne({ emailDomain: owner.domain })).settings.loginAlertsEnabled, false);
+
+  await request(app).patch('/api/v1/organisations/settings')
+    .set(ownerHeader).send({ loginAlertsEnabled: true }).expect(200);
+  const sendLoginAlert = emailService.sendLoginAlert;
+  let login;
+  try {
+    console.error = (...args) => loggedErrors.push(args);
+    emailService.sendLoginAlert = async () => { throw new Error('SMTP unavailable'); };
+    login = await request(app).post('/api/v1/auth/login')
+      .send({ email: owner.email, password: 'OwnerPassword!2026' });
+  } finally {
+    emailService.sendLoginAlert = sendLoginAlert;
+    console.error = originalConsoleError;
+  }
+  assert.equal(login.status, 200, JSON.stringify(login.body));
+  assert.ok(login.body.session.accessToken);
+  assert.ok(loggedErrors.some(([message]) => message === 'New sign-in alert delivery failed.'));
 });
 
 test('refresh rotates opaque credentials; logout and password change revoke active sessions', async () => {

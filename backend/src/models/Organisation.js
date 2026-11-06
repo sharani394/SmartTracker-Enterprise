@@ -15,6 +15,7 @@ const organisationSchema = new mongoose.Schema({
     supportEmail: { type: String, lowercase: true, trim: true, default: '' },
     timezone: { type: String, trim: true, default: 'UTC' },
     memberRegistrationEnabled: { type: Boolean, default: true },
+    loginAlertsEnabled: { type: Boolean, default: false },
   },
   status: {
     type: String,
