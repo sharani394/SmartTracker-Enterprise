@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -191,36 +192,43 @@ export default function MemberPortalScreen({ navigation, route }) {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <View>
-        <Text style={styles.brand}>SmartTracker</Text>
-        <Text style={styles.roleText}>
-          {isAgent ? 'Support Agent Portal' : 'Employee Portal'}
-        </Text>
-      </View>
+      <View style={styles.headerInner}>
+        <View style={styles.brandGroup}>
+          <View style={styles.brandMark}>
+            <Text style={styles.brandMarkText}>ST</Text>
+          </View>
+          <View>
+            <Text style={styles.brand}>SmartTracker</Text>
+            <Text style={styles.roleText}>
+              {isAgent ? 'Support Agent Portal' : 'Employee Portal'}
+            </Text>
+          </View>
+        </View>
 
-      <View style={styles.headerActions}>
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={() => setActiveTab('Notifications')}
-          accessibilityRole="button"
-          accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
-        >
-          <Text style={styles.notificationIcon}>🔔</Text>
-          {unreadCount > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.headerLogoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Log out"
-        >
-          <Text style={styles.headerLogoutText}>Log Out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => setActiveTab('Notifications')}
+            accessibilityRole="button"
+            accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+          >
+            <Text style={styles.notificationIcon}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerLogoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+          >
+            <Text style={styles.headerLogoutText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -764,17 +772,39 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 48,
-    paddingBottom: 16,
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'web' ? 12 : 48,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8ECF3',
+  },
+  headerInner: {
     width: '100%',
     maxWidth: 1024,
     alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8ECF3',
+    minHeight: 44,
+  },
+  brandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brandMark: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: GREEN,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandMarkText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
   },
   headerActions: {
     flexDirection: 'row',
@@ -782,9 +812,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brand: {
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: '800',
-    color: GREEN,
+    color: '#173B2D',
   },
   roleText: {
     fontSize: 12,
