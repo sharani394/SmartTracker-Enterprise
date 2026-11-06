@@ -37,6 +37,10 @@ function SectionHeading({ title, subtitle }) {
   );
 }
 
+function formatStatus(status) {
+  return status.replaceAll('_', ' ').toLowerCase();
+}
+
 function StatCard({ item }) {
   return (
     <View style={styles.statCard}>
@@ -116,13 +120,18 @@ export default function OwnerDashboardScreen({ navigation }) {
               {primaryAdmin === undefined
                 ? 'Loading administrator details…'
                 : primaryAdmin
-                  ? `${primaryAdmin.email} · ${primaryAdmin.status.replaceAll('_', ' ').toLowerCase()}`
+                  ? `${primaryAdmin.email} · ${formatStatus(primaryAdmin.status)}`
                   : 'No Primary Admin has been appointed yet.'}
             </Text>
           </View>
-          <Text style={styles.activeLabel}>
-            {primaryAdmin === undefined ? 'Loading' : primaryAdmin ? primaryAdmin.status.replaceAll('_', ' ') : 'Not appointed'}
-          </Text>
+          {primaryAdmin === undefined ? <Text style={styles.mutedText}>Loading</Text> : (
+            <Text style={[
+              styles.accountStatus,
+              primaryAdmin ? primaryAdmin.status === 'ACTIVE' ? styles.accountStatusActive : styles.accountStatusPending : styles.accountStatusNeutral,
+            ]}>
+              {primaryAdmin ? formatStatus(primaryAdmin.status) : 'Not appointed'}
+            </Text>
+          )}
         </View>
 
         <TouchableOpacity
@@ -239,13 +248,18 @@ export default function OwnerDashboardScreen({ navigation }) {
               {primaryAdmin === undefined
                 ? 'Loading administrator details…'
                 : primaryAdmin
-                  ? `${primaryAdmin.email} · ${primaryAdmin.status.replaceAll('_', ' ').toLowerCase()}`
+                  ? `${primaryAdmin.email} · ${formatStatus(primaryAdmin.status)}`
                   : 'No Primary Admin has been appointed yet.'}
             </Text>
           </View>
-          <Text style={styles.activeLabel}>
-            {primaryAdmin === undefined ? 'Loading' : primaryAdmin ? primaryAdmin.status.replaceAll('_', ' ') : 'Not appointed'}
-          </Text>
+          {primaryAdmin === undefined ? <Text style={styles.mutedText}>Loading</Text> : (
+            <Text style={[
+              styles.accountStatus,
+              primaryAdmin ? primaryAdmin.status === 'ACTIVE' ? styles.accountStatusActive : styles.accountStatusPending : styles.accountStatusNeutral,
+            ]}>
+              {primaryAdmin ? formatStatus(primaryAdmin.status) : 'Not appointed'}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -264,7 +278,12 @@ export default function OwnerDashboardScreen({ navigation }) {
               <Text style={styles.personName}>{admin.fullName}</Text>
               <Text style={styles.mutedText}>{admin.email} · {(admin.permissions || []).length} permissions</Text>
             </View>
-            <Text style={styles.activeLabel}>{admin.status}</Text>
+            <Text style={[
+              styles.accountStatus,
+              admin.status === 'ACTIVE' ? styles.accountStatusActive : styles.accountStatusPending,
+            ]}>
+              {formatStatus(admin.status)}
+            </Text>
           </View>
         ))}
         {!internalAdmins.length ? <Text style={styles.smallNote}>No Internal Admin accounts.</Text> : null}
@@ -273,12 +292,16 @@ export default function OwnerDashboardScreen({ navigation }) {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Primary Admin Appointment</Text>
         <Text style={styles.panelDescription}>
-          Generate a secure registration code for appointing the initial Primary Admin.
+          Generate a secure one-time code to appoint a Primary Admin. If one is already appointed, you can replace them after confirming your Owner password.
         </Text>
 
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={async () => {
+            if (primaryAdmin && !replaceAdmin) {
+              setReplaceAdmin(true);
+              return;
+            }
             try { const result = await issuePrimaryAdminCode(replaceAdmin ? { replaceCurrent: true, currentPassword } : {}); setCode(result); setCurrentPassword(''); setReplaceAdmin(false); }
             catch (error) {
               if (error.status === 409 && !replaceAdmin) setReplaceAdmin(true);
@@ -287,11 +310,37 @@ export default function OwnerDashboardScreen({ navigation }) {
           }}
         >
           <Text style={styles.primaryButtonText}>
-            Generate Admin Registration Code
+            {replaceAdmin
+              ? 'Confirm & Generate Replacement Code'
+              : primaryAdmin
+                ? 'Replace Primary Admin'
+                : 'Generate Admin Registration Code'}
           </Text>
         </TouchableOpacity>
 
-        {replaceAdmin ? <TextInput style={styles.orgInput} placeholder="Confirm current Owner password to replace" secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} /> : null}
+        {replaceAdmin ? (
+          <View style={styles.inputField}>
+            <Text style={styles.inputLabel}>Current Owner Password</Text>
+            <TextInput
+              style={styles.orgInput}
+              placeholder="Enter your current password"
+              secureTextEntry
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              autoCapitalize="none"
+              accessibilityLabel="Current Owner Password"
+            />
+            <Text style={styles.inputHelp}>Password confirmation is required to replace the current Primary Admin.</Text>
+            <TouchableOpacity
+              style={styles.cancelReplacementButton}
+              onPress={() => { setReplaceAdmin(false); setCurrentPassword(''); }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel Primary Admin replacement"
+            >
+              <Text style={styles.cancelReplacementText}>Cancel replacement</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {code ? <View><Text style={styles.codeValue}>Registration code: {code.code}</Text><Text style={styles.smallNote}>Expires: {new Date(code.expiresAt).toLocaleString()}. This one-time code is shown only now; share it with the applicant securely.</Text></View> : null}
       </View>
 
@@ -931,10 +980,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  activeLabel: {
-    color: '#16845B',
-    fontSize: 11,
+  accountStatus: {
+    overflow: 'hidden',
+    borderRadius: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    fontSize: 10,
     fontWeight: '800',
+    textTransform: 'capitalize',
+  },
+  accountStatusActive: {
+    color: '#126B49',
+    backgroundColor: '#E8F7EF',
+  },
+  accountStatusPending: {
+    color: '#8B5A12',
+    backgroundColor: '#FFF3E5',
+  },
+  accountStatusNeutral: {
+    color: '#657187',
+    backgroundColor: '#F0F2F6',
+  },
+  cancelReplacementButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 9,
+  },
+  cancelReplacementText: {
+    color: '#68758B',
+    fontSize: 11,
+    fontWeight: '700',
   },
   mutedText: {
     color: '#8994A5',
