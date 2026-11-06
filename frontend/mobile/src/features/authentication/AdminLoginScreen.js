@@ -17,6 +17,7 @@ export default function AdminLoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
@@ -110,7 +111,7 @@ export default function AdminLoginScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.passwordContainer}>
+          <View style={[styles.passwordContainer, passwordFocused && styles.passwordContainerFocused]}>
             <TextInput
               style={styles.passwordInput}
               placeholder="Enter your password"
@@ -123,6 +124,9 @@ export default function AdminLoginScreen({ navigation }) {
               autoComplete="current-password"
               accessibilityLabel="Password"
               returnKeyType="done"
+              underlineColorAndroid="transparent"
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
               onSubmitEditing={handleLogin}
             />
 
@@ -294,10 +298,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 25,
   },
+  passwordContainerFocused: {
+    borderColor: '#16845B',
+    shadowColor: '#16845B',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+  },
   passwordInput: {
     flex: 1,
     color: '#17233D',
     fontSize: 14,
+    outlineStyle: 'none',
   },
   showText: {
     color: '#16845B',
