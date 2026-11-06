@@ -1075,8 +1075,18 @@ export default function AdminDashboardScreen({ navigation }) {
           </View>
         </View>
 
-        <View style={styles.adminBadge}>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+          >
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+          <View style={styles.adminBadge}>
             <Text style={styles.adminBadgeText}>{user?.role === 'INTERNAL_ADMIN' ? 'IA' : 'PA'}</Text>
+          </View>
         </View>
       </View>
 
@@ -1150,13 +1160,6 @@ export default function AdminDashboardScreen({ navigation }) {
         ) : null}
         {renderContent()}
 
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-        >
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-
         <Text style={styles.footer}>
           SmartTracker · Admin Portal
         </Text>
@@ -1178,6 +1181,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EAEFF5',
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: {
     width: 42,
     height: 42,
@@ -1416,14 +1420,15 @@ const styles = StyleSheet.create({
   settingLabel: { color: '#526078', fontSize: 12 },
   note: { color: '#929CAE', fontSize: 10, lineHeight: 16, marginTop: 10 },
   signOutButton: {
-    padding: 14,
+    minHeight: 38,
+    paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#F0D5D5',
     alignItems: 'center',
-    marginTop: 15,
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  signOutText: { color: '#C0392B', fontSize: 13, fontWeight: '700' },
+  signOutText: { color: '#C0392B', fontSize: 12, fontWeight: '700' },
   footer: { textAlign: 'center', color: '#A1AABA', fontSize: 10, marginTop: 20 },
 });

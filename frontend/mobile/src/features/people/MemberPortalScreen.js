@@ -198,20 +198,33 @@ export default function MemberPortalScreen({ navigation, route }) {
         </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.notificationButton}
-        onPress={() => {
-          setActiveTab('Notifications');
-          markNotificationsRead().catch((error) => showMessage('Could not update notifications', apiMessage(error)));
-        }}
-      >
-        <Text style={styles.notificationIcon}>🔔</Text>
-        {unreadCount > 0 && (
-          <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => {
+            setActiveTab('Notifications');
+            markNotificationsRead().catch((error) => showMessage('Could not update notifications', apiMessage(error)));
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+        >
+          <Text style={styles.notificationIcon}>🔔</Text>
+          {unreadCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.headerLogoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+        >
+          <Text style={styles.headerLogoutText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -745,13 +758,6 @@ export default function MemberPortalScreen({ navigation, route }) {
         ) : null}
         {renderContent()}
 
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -775,6 +781,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E8ECF3',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   brand: {
     fontSize: 21,
@@ -1133,16 +1144,16 @@ const styles = StyleSheet.create({
   backLink: {
     marginBottom: 16,
   },
-  logoutButton: {
-    marginTop: 24,
+  headerLogoutButton: {
+    minHeight: 43,
+    justifyContent: 'center',
     borderRadius: 11,
     backgroundColor: '#FDECEC',
-    padding: 15,
-    alignItems: 'center',
+    paddingHorizontal: 12,
   },
-  logoutText: {
+  headerLogoutText: {
     color: '#B42318',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 12,
   },
 });

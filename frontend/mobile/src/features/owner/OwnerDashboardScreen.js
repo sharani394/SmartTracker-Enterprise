@@ -527,14 +527,24 @@ export default function OwnerDashboardScreen({ navigation }) {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => navigation.navigate('OwnerProfile')}
-          accessibilityRole="button"
-          accessibilityLabel="Open owner profile"
-        >
-          <Text style={styles.profileInitial}>{user?.fullName?.trim()?.[0]?.toUpperCase() || 'O'}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+          >
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => navigation.navigate('OwnerProfile')}
+            accessibilityRole="button"
+            accessibilityLabel="Open owner profile"
+          >
+            <Text style={styles.profileInitial}>{user?.fullName?.trim()?.[0]?.toUpperCase() || 'O'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.welcomeBanner}>
@@ -621,13 +631,6 @@ export default function OwnerDashboardScreen({ navigation }) {
         ) : null}
         {renderContent()}
 
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-        >
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-
         <Text style={styles.footer}>
           SmartTracker · Organisation Owner Portal
         </Text>
@@ -652,6 +655,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EAEFF5',
   },
   brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -1040,17 +1048,18 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   signOutButton: {
-    padding: 14,
+    minHeight: 38,
+    paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#F0D5D5',
     alignItems: 'center',
-    marginTop: 15,
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
   signOutText: {
     color: '#C0392B',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   footer: {
