@@ -152,6 +152,7 @@ export default function MemberLoginScreen({ navigation }) {
               autoCapitalize="none"
               autoComplete="current-password"
               accessibilityLabel="Password"
+              selectionColor="#16845B"
               returnKeyType="done"
               underlineColorAndroid="transparent"
               onFocus={() => setPasswordFocused(true)}
@@ -354,6 +355,8 @@ const styles = StyleSheet.create({
     color: '#17233D',
     fontSize: 14,
     outlineStyle: 'none',
+    outlineWidth: 0,
+    outlineColor: 'transparent',
   },
   showText: {
     color: '#16845B',
