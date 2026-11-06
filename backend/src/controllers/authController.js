@@ -6,6 +6,7 @@ const Organisation = require('../models/Organisation');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const EmailVerification = require('../models/EmailVerification');
+const PasswordReset = require('../models/PasswordReset');
 const PrimaryAdminCode = require('../models/PrimaryAdminCode');
 const { AppError } = require('../middleware/errorHandler');
 const emailService = require('../services/emailService');
@@ -220,6 +221,95 @@ async function resendVerification(req, res) {
     }
   }
   return res.status(202).json({ message: 'If the account requires verification, a new code will be sent to its company email.' });
+}
+
+async function requestPasswordReset(req, res) {
+  const user = await User.findOne({
+    email: req.body.email.toLowerCase(),
+    status: 'ACTIVE',
+    emailVerifiedAt: { $ne: null },
+  });
+  if (user) {
+    const code = createNumericCode();
+    const expiresAt = new Date(Date.now() + config.emailVerificationMinutes * 60_000);
+    await PasswordReset.findOneAndUpdate({ userId: user._id }, {
+      $set: {
+        email: user.email,
+        codeHash: digestSecret(code),
+        attempts: 0,
+        expiresAt,
+        consumedAt: null,
+      },
+    }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    try {
+      await emailService.sendPasswordResetCode({
+        email: user.email,
+        fullName: user.fullName,
+        code,
+        expiresInMinutes: config.emailVerificationMinutes,
+      });
+    } catch (error) {
+      console.error('Password reset email delivery failed.', {
+        userId: String(user._id),
+        code: error.code || 'EMAIL_DELIVERY_FAILED',
+      });
+    }
+  }
+  res.set('Cache-Control', 'no-store');
+  return res.status(202).json({
+    message: 'If an active account uses that email, a password reset code will be sent.',
+  });
+}
+
+async function confirmPasswordReset(req, res) {
+  const email = req.body.email.toLowerCase();
+  const now = new Date();
+  const reset = await PasswordReset.findOne({
+    email,
+    consumedAt: null,
+    expiresAt: { $gt: now },
+    attempts: { $lt: 5 },
+  }).select('+codeHash');
+
+  if (!reset || !safeEqual(digestSecret(req.body.code), reset.codeHash)) {
+    if (reset) {
+      await PasswordReset.updateOne(
+        { _id: reset._id, attempts: { $lt: 5 }, consumedAt: null },
+        { $inc: { attempts: 1 } }
+      );
+    }
+    throw new AppError('Password reset code is invalid or expired.', 400, 'INVALID_PASSWORD_RESET_CODE');
+  }
+
+  const consumed = await PasswordReset.findOneAndUpdate({
+    _id: reset._id,
+    codeHash: reset.codeHash,
+    consumedAt: null,
+    expiresAt: { $gt: now },
+    attempts: { $lt: 5 },
+  }, { $set: { consumedAt: now } }, { new: true });
+  if (!consumed) {
+    throw new AppError('Password reset code is invalid or expired.', 400, 'INVALID_PASSWORD_RESET_CODE');
+  }
+
+  const user = await User.findOne({
+    _id: reset.userId,
+    email,
+    status: 'ACTIVE',
+    emailVerifiedAt: { $ne: null },
+  });
+  if (!user) {
+    throw new AppError('Password reset code is invalid or expired.', 400, 'INVALID_PASSWORD_RESET_CODE');
+  }
+
+  user.passwordHash = await bcrypt.hash(req.body.password, config.bcryptRounds);
+  user.passwordChangedAt = now;
+  await user.save();
+  await Session.updateMany({ userId: user._id, revokedAt: null }, {
+    $set: { revokedAt: now, refreshTokenHash: `revoked:${crypto.randomUUID()}` },
+  });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ message: 'Password reset. Sign in with your new password.' });
 }
 
 async function registerMember(req, res) {
@@ -479,6 +569,8 @@ module.exports = {
   logout,
   confirmEmail,
   resendVerification,
+  requestPasswordReset,
+  confirmPasswordReset,
   registerMember,
   issuePrimaryAdminCode,
   registerPrimaryAdmin,

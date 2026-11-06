@@ -23,11 +23,29 @@ describe('authentication and approval API contract', () => {
     expect(apiRequest).toHaveBeenLastCalledWith('auth/email-verification/confirm', { method: 'POST', auth: false, body: { email: memberPayload.email, code: '987654' } });
   });
 
+  test('requests and confirms password resets through unauthenticated routes', async () => {
+    apiRequest.mockResolvedValue({ message: 'If an active account uses that email, a password reset code will be sent.' });
+    await authService.requestPasswordReset('owner@example.org');
+    expect(apiRequest).toHaveBeenLastCalledWith('auth/password-reset/request', {
+      method: 'POST', auth: false, body: { email: 'owner@example.org' },
+    });
+    await authService.confirmPasswordReset('owner@example.org', '123456', 'NewPassword!2026');
+    expect(apiRequest).toHaveBeenLastCalledWith('auth/password-reset/confirm', {
+      method: 'POST', auth: false, body: { email: 'owner@example.org', code: '123456', password: 'NewPassword!2026' },
+    });
+  });
+
   test('submits the approved role and decision to the tenant member review endpoint', async () => {
     apiRequest.mockResolvedValue({ member: { id: 'member-1', role: 'SUPPORT_AGENT' } });
     await organisationService.reviewMember('member-1', 'APPROVE', 'SUPPORT_AGENT');
     expect(apiRequest).toHaveBeenCalledWith('organisations/members/member-1/approval', {
       method: 'PATCH', body: { decision: 'APPROVE', approvedRole: 'SUPPORT_AGENT' },
     });
+  });
+
+  test('requests Primary Admin details from the organisation leadership endpoint', async () => {
+    apiRequest.mockResolvedValue({ primaryAdmin: null });
+    await organisationService.getPrimaryAdmin();
+    expect(apiRequest).toHaveBeenCalledWith('organisations/primary-admin');
   });
 });

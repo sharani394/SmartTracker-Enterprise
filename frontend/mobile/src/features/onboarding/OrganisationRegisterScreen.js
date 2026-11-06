@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -54,7 +53,7 @@ export default function OrganisationRegisterScreen({ navigation }) {
 
     for (const field of requiredFields) {
       if (!form[field].trim()) {
-        Alert.alert('Missing information', 'Please fill in all fields.');
+        showMessage('Missing information', 'Please fill in all fields.');
         return false;
       }
     }
@@ -69,28 +68,22 @@ export default function OrganisationRegisterScreen({ navigation }) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email)) {
-      Alert.alert('Invalid email', 'Please enter a valid company email.');
+      showMessage('Invalid email', 'Please enter a valid company email.');
       return false;
     }
 
     if (!email.endsWith(`@${domain}`)) {
-      Alert.alert(
-        'Domain mismatch',
-        `Your email must belong to the registered company domain: ${domain}`
-      );
+      showMessage('Domain mismatch', `Your email must belong to the registered company domain: ${domain}`);
       return false;
     }
 
     if (form.password.length < 8) {
-      Alert.alert(
-        'Weak password',
-        'Password must contain at least 8 characters.'
-      );
+      showMessage('Weak password', 'Password must contain at least 8 characters.');
       return false;
     }
 
     if (form.password !== form.confirmPassword) {
-      Alert.alert('Password mismatch', 'Your passwords do not match.');
+      showMessage('Password mismatch', 'Your passwords do not match.');
       return false;
     }
 

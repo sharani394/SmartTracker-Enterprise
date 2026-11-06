@@ -7,20 +7,21 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Platform,
+  Linking,
 } from 'react-native';
 import { knowledgeBaseService } from '../../services/knowledgeBaseService';
-import { apiMessage } from '../../utils/feedback';
+import { organisationService } from '../../services/organisationService';
+import { apiMessage, showMessage } from '../../utils/feedback';
 
 export default function OwnerHelpScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(null);
-  const [category, setCategory] = useState('Technical Issue');
-  const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
   const [articles, setArticles] = useState([]);
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [articleError, setArticleError] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [loadingSupportEmail, setLoadingSupportEmail] = useState(true);
+  const [supportEmailError, setSupportEmailError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -31,6 +32,36 @@ export default function OwnerHelpScreen({ navigation }) {
       .finally(() => { if (active) setLoadingArticles(false); });
     return () => { active = false; };
   }, [search]);
+
+  useEffect(() => {
+    let active = true;
+    organisationService.getSettings()
+      .then((result) => {
+        if (active) setSupportEmail(result.organisation?.settings?.supportEmail || '');
+      })
+      .catch((error) => {
+        if (active) setSupportEmailError(apiMessage(error));
+      })
+      .finally(() => {
+        if (active) setLoadingSupportEmail(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const contactSupport = async () => {
+    if (!supportEmail) return;
+    const url = `mailto:${supportEmail}?subject=${encodeURIComponent('SmartTracker support request')}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        showMessage('Email app unavailable', `Contact support at ${supportEmail}.`);
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (error) {
+      showMessage('Could not open email app', `Contact support at ${supportEmail}. ${apiMessage(error)}`);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -88,61 +119,23 @@ export default function OwnerHelpScreen({ navigation }) {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Contact Support</Text>
-        <Text style={styles.description}>
-          Ticket creation from this Owner account is not permitted by the backend. Use an Employee account to submit support tickets.
-        </Text>
-
-        <Text style={styles.label}>Issue Category</Text>
-        <View style={styles.categoryContainer}>
-          {['Technical Issue', 'Account Access', 'Billing', 'Other'].map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={[
-                styles.categoryButton,
-                category === item && styles.categoryActive,
-              ]}
-            disabled
-            onPress={() => setCategory(item)}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  category === item && styles.categoryActiveText,
-                ]}
-              >
-                {item}
-              </Text>
+        {loadingSupportEmail ? (
+          <Text style={styles.description}>Loading your organisation support contact…</Text>
+        ) : supportEmailError ? (
+          <Text style={styles.error}>{supportEmailError}</Text>
+        ) : supportEmail ? (
+          <>
+            <Text style={styles.description}>Email your configured support contact for help with this workspace.</Text>
+            <Text style={styles.supportAddress}>{supportEmail}</Text>
+            <TouchableOpacity style={styles.submitButton} onPress={contactSupport} accessibilityRole="button">
+              <Text style={styles.submitText}>Email support</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Subject</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter support request subject"
-          placeholderTextColor="#9CA3AF"
-          value={subject}
-          onChangeText={setSubject}
-          editable={false}
-        />
-
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Explain your issue in detail..."
-          placeholderTextColor="#9CA3AF"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          textAlignVertical="top"
-          editable={false}
-        />
-
-        <TouchableOpacity disabled style={styles.submitButton}>
-          <Text style={styles.submitText}>Employee accounts only</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.note}>The API only accepts ticket creation from active Employee accounts.</Text>
+          </>
+        ) : (
+          <Text style={styles.description}>
+            No support contact is configured yet. Add a support email under Organisation settings to enable direct contact.
+          </Text>
+        )}
       </View>
 
       <Text style={styles.footer}>SmartTracker · Help Centre</Text>
@@ -174,22 +167,13 @@ const styles = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11,
     color: '#27344D', marginTop: 12, backgroundColor: '#FFFFFF',
   },
-  textArea: { height: 110, paddingTop: 12 },
   faqItem: { borderTopWidth: 1, borderTopColor: '#EEF1F6', paddingVertical: 15 },
   faqHeader: { flexDirection: 'row', alignItems: 'center' },
   question: { flex: 1, color: '#27344D', fontSize: 12, fontWeight: '700' },
   arrow: { color: '#3157D5', fontSize: 20, fontWeight: '700', marginLeft: 10 },
   answer: { color: '#718096', fontSize: 12, lineHeight: 19, marginTop: 10 },
   description: { color: '#8490A3', fontSize: 11, lineHeight: 18 },
-  label: { color: '#34415A', fontSize: 12, fontWeight: '700', marginTop: 17 },
-  categoryContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  categoryButton: {
-    paddingHorizontal: 11, paddingVertical: 9,
-    borderRadius: 20, borderWidth: 1, borderColor: '#DDE4EF',
-  },
-  categoryActive: { backgroundColor: '#EAF0FF', borderColor: '#3157D5' },
-  categoryText: { color: '#68758B', fontSize: 10, fontWeight: '600' },
-  categoryActiveText: { color: '#3157D5' },
+  supportAddress: { color: '#27344D', fontSize: 14, fontWeight: '700', marginTop: 10 },
   submitButton: {
     backgroundColor: '#3157D5', padding: 14,
     borderRadius: 10, alignItems: 'center', marginTop: 20,
@@ -197,6 +181,5 @@ const styles = StyleSheet.create({
   submitText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   message: { color: '#3157D5', backgroundColor: '#EAF0FF', padding: 11, borderRadius: 8, fontSize: 12, marginTop: 13 },
   error: { color: '#B42318', backgroundColor: '#FDECEC', padding: 11, borderRadius: 8, fontSize: 12, marginTop: 13 },
-  note: { color: '#929CAE', fontSize: 10, lineHeight: 16, marginTop: 12 },
   footer: { textAlign: 'center', color: '#A1AABA', fontSize: 10, marginTop: 15 },
 });

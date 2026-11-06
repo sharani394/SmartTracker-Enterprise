@@ -6,6 +6,10 @@ export const authService = {
   registerMember: (payload) => apiRequest('auth/members/register', { method: 'POST', auth: false, body: payload }),
   confirmEmail: (email, code) => apiRequest('auth/email-verification/confirm', { method: 'POST', auth: false, body: { email, code } }),
   resendVerification: (email) => apiRequest('auth/email-verification/resend', { method: 'POST', auth: false, body: { email } }),
+  requestPasswordReset: (email) => apiRequest('auth/password-reset/request', { method: 'POST', auth: false, body: { email } }),
+  confirmPasswordReset: (email, code, password) => apiRequest('auth/password-reset/confirm', {
+    method: 'POST', auth: false, body: { email, code, password },
+  }),
   acceptInternalAdminInvitation: (payload) => apiRequest('auth/internal-admin-invitations/accept', { method: 'POST', auth: false, body: payload }),
   login: (email, password) => apiRequest('auth/login', { method: 'POST', auth: false, body: { email, password } }),
   refresh: (refreshToken) => apiRequest('auth/refresh', { method: 'POST', auth: false, retryAuth: false, body: { refreshToken } }),

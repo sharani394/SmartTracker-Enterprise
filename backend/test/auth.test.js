@@ -13,6 +13,7 @@ const Organisation = require('../src/models/Organisation');
 const User = require('../src/models/User');
 const Session = require('../src/models/Session');
 const EmailVerification = require('../src/models/EmailVerification');
+const PasswordReset = require('../src/models/PasswordReset');
 const PrimaryAdminCode = require('../src/models/PrimaryAdminCode');
 const Department = require('../src/models/Department');
 const AuditEvent = require('../src/models/AuditEvent');
@@ -20,9 +21,13 @@ const AdminInvitation = require('../src/models/AdminInvitation');
 const emailService = require('../src/services/emailService');
 
 const sentCodes = [];
+const sentPasswordResetCodes = [];
 const sentInvitations = [];
 emailService.sendVerificationCode = async ({ email, code }) => {
   sentCodes.push({ email, code });
+};
+emailService.sendPasswordResetCode = async ({ email, code }) => {
+  sentPasswordResetCodes.push({ email, code });
 };
 emailService.sendAdminInvitation = async ({ email, code }) => {
   sentInvitations.push({ email, code });
@@ -100,16 +105,18 @@ before(async () => {
   await connectDatabase();
   await Promise.all([
     Organisation.init(), User.init(), Session.init(), EmailVerification.init(), PrimaryAdminCode.init(),
-    Department.init(), AuditEvent.init(), AdminInvitation.init(),
+    PasswordReset.init(), Department.init(), AuditEvent.init(), AdminInvitation.init(),
   ]);
 });
 
 beforeEach(async () => {
   sentCodes.length = 0;
+  sentPasswordResetCodes.length = 0;
   sentInvitations.length = 0;
   await Promise.all([
     Organisation.deleteMany({}), User.deleteMany({}), Session.deleteMany({}),
     EmailVerification.deleteMany({}), PrimaryAdminCode.deleteMany({}),
+    PasswordReset.deleteMany({}),
     Department.deleteMany({}), AuditEvent.deleteMany({}), AdminInvitation.deleteMany({}),
   ]);
 });
@@ -178,6 +185,66 @@ test('refresh rotates opaque credentials; logout and password change revoke acti
   const loggedOut = await request(app).post('/api/v1/auth/logout').set('Authorization', `Bearer ${newLogin.body.session.accessToken}`);
   assert.equal(loggedOut.status, 200);
   assert.equal((await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${newLogin.body.session.accessToken}`)).status, 401);
+});
+
+test('password reset is account-safe, one-time, updates the password and revokes sessions', async () => {
+  const owner = await registerOwner();
+  assert.equal((await Session.find({ userId: owner.owner.id, revokedAt: null })).length, 1);
+
+  const unknownRequest = await request(app).post('/api/v1/auth/password-reset/request')
+    .send({ email: 'missing@example.org' });
+  const resetRequest = await request(app).post('/api/v1/auth/password-reset/request')
+    .send({ email: owner.email });
+  assert.equal(unknownRequest.status, 202);
+  assert.deepEqual(resetRequest.body, unknownRequest.body);
+  assert.equal(sentPasswordResetCodes.length, 1);
+
+  const resetRecord = await PasswordReset.findOne({ email: owner.email }).select('+codeHash');
+  assert.notEqual(resetRecord.codeHash, sentPasswordResetCodes[0].code);
+
+  const reset = await request(app).post('/api/v1/auth/password-reset/confirm').send({
+    email: owner.email,
+    code: sentPasswordResetCodes[0].code,
+    password: 'OwnerPassword!2027',
+  });
+  assert.equal(reset.status, 200, JSON.stringify(reset.body));
+  assert.equal((await Session.find({ userId: owner.owner.id, revokedAt: null })).length, 0);
+  assert.equal((await request(app).get('/api/v1/auth/me')
+    .set('Authorization', `Bearer ${owner.token}`)).status, 401);
+  assert.equal((await request(app).post('/api/v1/auth/login')
+    .send({ email: owner.email, password: 'OwnerPassword!2026' })).status, 401);
+  assert.equal((await request(app).post('/api/v1/auth/login')
+    .send({ email: owner.email, password: 'OwnerPassword!2027' })).status, 200);
+  assert.equal((await request(app).post('/api/v1/auth/password-reset/confirm').send({
+    email: owner.email,
+    code: sentPasswordResetCodes[0].code,
+    password: 'OwnerPassword!2028',
+  })).status, 400);
+});
+
+test('password reset codes lock after five failed attempts', async () => {
+  const owner = await registerOwner();
+  await request(app).post('/api/v1/auth/password-reset/request').send({ email: owner.email });
+  const correctCode = sentPasswordResetCodes[0].code;
+  const wrongCode = correctCode === '999999' ? '000000' : '999999';
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const failed = await request(app).post('/api/v1/auth/password-reset/confirm').send({
+      email: owner.email,
+      code: wrongCode,
+      password: 'OwnerPassword!2027',
+    });
+    assert.equal(failed.status, 400);
+  }
+
+  const locked = await request(app).post('/api/v1/auth/password-reset/confirm').send({
+    email: owner.email,
+    code: correctCode,
+    password: 'OwnerPassword!2027',
+  });
+  assert.equal(locked.status, 400);
+  assert.equal((await request(app).post('/api/v1/auth/login')
+    .send({ email: owner.email, password: 'OwnerPassword!2026' })).status, 200);
 });
 
 test('member role is assigned only during admin approval; unauthorized users cannot administer accounts', async () => {
@@ -327,6 +394,7 @@ test('Swagger UI and OpenAPI document every implemented endpoint and bearer auth
     '/api/v1/organisations/members/{memberId}/approval',
     '/api/v1/organisations/settings',
     '/api/v1/organisations/internal-admins',
+    '/api/v1/organisations/primary-admin',
     '/api/v1/organisations/internal-admins/{adminId}/permissions',
     '/api/v1/organisations/internal-admins/{adminId}/status',
     '/api/v1/organisations/users',
@@ -339,6 +407,8 @@ test('Swagger UI and OpenAPI document every implemented endpoint and bearer auth
     '/api/v1/auth/logout',
     '/api/v1/auth/email-verification/confirm',
     '/api/v1/auth/email-verification/resend',
+    '/api/v1/auth/password-reset/request',
+    '/api/v1/auth/password-reset/confirm',
     '/api/v1/auth/internal-admin-invitations/accept',
     '/api/v1/auth/primary-admin-codes',
     '/api/v1/auth/primary-admin/register',
@@ -356,6 +426,7 @@ test('Swagger UI and OpenAPI document every implemented endpoint and bearer auth
     '/api/v1/organisations/members': ['get'],
     '/api/v1/organisations/members/{memberId}/approval': ['patch'],
     '/api/v1/organisations/internal-admins': ['get', 'post'],
+    '/api/v1/organisations/primary-admin': ['get'],
     '/api/v1/organisations/internal-admins/{adminId}/permissions': ['patch'],
     '/api/v1/organisations/internal-admins/{adminId}/status': ['patch'],
     '/api/v1/organisations/users': ['get'],
@@ -368,6 +439,8 @@ test('Swagger UI and OpenAPI document every implemented endpoint and bearer auth
     '/api/v1/auth/logout': ['post'],
     '/api/v1/auth/email-verification/confirm': ['post'],
     '/api/v1/auth/email-verification/resend': ['post'],
+    '/api/v1/auth/password-reset/request': ['post'],
+    '/api/v1/auth/password-reset/confirm': ['post'],
     '/api/v1/auth/internal-admin-invitations/accept': ['post'],
     '/api/v1/auth/primary-admin-codes': ['post'],
     '/api/v1/auth/primary-admin/register': ['post'],
@@ -433,6 +506,49 @@ test('Owner password confirmation replaces the Primary Admin and revokes the old
   await request(app).post('/api/v1/auth/email-verification/confirm')
     .send({ email: secondEmail, code: sentCodes.at(-1).code }).expect(200);
   assert.equal(await User.countDocuments({ organisationId: owner.owner.organisationId, role: 'PRIMARY_ADMIN' }), 1);
+});
+
+test('Owner and Primary Admin can read their organisation Primary Admin; other roles cannot', async () => {
+  const owner = await registerOwner();
+  const ownerHeader = { Authorization: `Bearer ${owner.token}` };
+  const empty = await request(app).get('/api/v1/organisations/primary-admin').set(ownerHeader);
+  assert.equal(empty.status, 200);
+  assert.equal(empty.body.primaryAdmin, null);
+
+  const issued = await request(app).post('/api/v1/auth/primary-admin-codes')
+    .set(ownerHeader).expect(201);
+  const email = `primary@${owner.domain}`;
+  const registered = await request(app).post('/api/v1/auth/primary-admin/register').send({
+    organisationName: owner.organisationName,
+    fullName: 'Primary Admin',
+    email,
+    phone: '+1 555 010 2050',
+    registrationCode: issued.body.code,
+    password: 'PrimaryPassword!2026',
+  });
+  assert.equal(registered.status, 201, JSON.stringify(registered.body));
+  await request(app).post('/api/v1/auth/email-verification/confirm')
+    .send({ email, code: sentCodes.at(-1).code }).expect(200);
+
+  const ownerResult = await request(app).get('/api/v1/organisations/primary-admin').set(ownerHeader);
+  assert.equal(ownerResult.status, 200);
+  assert.equal(ownerResult.body.primaryAdmin.fullName, 'Primary Admin');
+  assert.equal(ownerResult.body.primaryAdmin.email, email);
+  assert.equal(ownerResult.body.primaryAdmin.status, 'ACTIVE');
+
+  const primaryLogin = await request(app).post('/api/v1/auth/login')
+    .send({ email, password: 'PrimaryPassword!2026' }).expect(200);
+  const primaryResult = await request(app).get('/api/v1/organisations/primary-admin')
+    .set({ Authorization: `Bearer ${primaryLogin.body.session.accessToken}` });
+  assert.equal(primaryResult.status, 200);
+  assert.equal(primaryResult.body.primaryAdmin.id, registered.body.user.id);
+
+  const employee = await registerVerifiedMember(owner, 'employee');
+  const employeeLogin = await request(app).post('/api/v1/auth/login')
+    .send({ email: employee.email, password: 'MemberPassword!2026' }).expect(200);
+  const forbidden = await request(app).get('/api/v1/organisations/primary-admin')
+    .set({ Authorization: `Bearer ${employeeLogin.body.session.accessToken}` });
+  assert.equal(forbidden.status, 403);
 });
 
 test('Internal Admin invitations activate only after one-time acceptance and enforce individual permissions', async () => {
@@ -610,4 +726,3 @@ test('departments, settings, user records and audit events remain isolated by or
   assert.ok(auditA.body.events.some((event) => event.action === 'ORGANISATION_SETTINGS_UPDATED'));
   assert.deepEqual(auditB.body.events.map((event) => event.action), ['DEPARTMENT_CREATED']);
 });
-

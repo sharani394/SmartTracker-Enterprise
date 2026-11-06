@@ -60,7 +60,7 @@ For automatic restart during development, run `npm run dev` from `backend`.
 | `JWT_SECRET` | Required | Unique random signing secret; at least 32 characters. |
 | `ACCESS_TOKEN_TTL` | `15m` | Short-lived access token lifetime. |
 | `REFRESH_TOKEN_DAYS` | `30` | Refresh session lifetime; refresh tokens rotate on use. |
-| `EMAIL_VERIFICATION_MINUTES` | `15` | Verification code lifetime. |
+| `EMAIL_VERIFICATION_MINUTES` | `15` | Email verification and password reset code lifetime. |
 | `PRIMARY_ADMIN_CODE_MINUTES` | `30` | One-time appointment code lifetime. |
 | `BCRYPT_ROUNDS` | `12` | bcrypt work factor; allowed range is 10–15. |
 | `SMTP_HOST` | Required for email | SMTP server hostname. |
@@ -93,6 +93,7 @@ Swagger's **Authorize** button accepts a bearer access token after signing in. D
 | `POST` | `/api/v1/organisations` | Public registration; creates owner and sends email verification. |
 | `GET`, `PATCH` | `/api/v1/organisations/settings` | `settings:read` / `settings:manage`; organisation is derived from the session. Email domain is immutable here. |
 | `GET`, `POST` | `/api/v1/organisations/internal-admins` | Owner or Primary Admin; invite or list tenant Internal Admins. |
+| `GET` | `/api/v1/organisations/primary-admin` | Owner or Primary Admin; reads the tenant's current Primary Admin details. |
 | `PATCH` | `/api/v1/organisations/internal-admins/{adminId}/permissions` | Owner or Primary Admin; grant only permissions the acting admin can hold. |
 | `PATCH` | `/api/v1/organisations/internal-admins/{adminId}/status` | Owner or Primary Admin; activate accepted invite or deactivate and revoke sessions. |
 | `GET` | `/api/v1/organisations/users` | `users:read` and/or `agents:read`; optional role/status filters. |
@@ -102,6 +103,8 @@ Swagger's **Authorize** button accepts a bearer access token after signing in. D
 | `GET` | `/api/v1/organisations/audit-events` | `audit:read`; tenant-scoped cursor pagination. |
 | `POST` | `/api/v1/auth/email-verification/confirm` | Public; consumes a verification code. |
 | `POST` | `/api/v1/auth/email-verification/resend` | Public; generic account-safe response. |
+| `POST` | `/api/v1/auth/password-reset/request` | Public; emails a one-time reset code with an account-safe response. |
+| `POST` | `/api/v1/auth/password-reset/confirm` | Public; consumes the reset code, updates the password, and revokes all active sessions. |
 | `POST` | `/api/v1/auth/internal-admin-invitations/accept` | Public; consumes the one-time invite code and sets the new password. |
 | `POST` | `/api/v1/auth/login` | Public; verifies credentials and account state. |
 | `POST` | `/api/v1/auth/refresh` | Public; rotates an opaque refresh token. |

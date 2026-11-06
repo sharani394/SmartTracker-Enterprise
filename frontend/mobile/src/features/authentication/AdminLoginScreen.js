@@ -6,13 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { apiMessage, navigateByRole, showMessage } from '../../utils/feedback';
+import { apiMessage, navigateByRole, showMessage, showSignInMessage } from '../../utils/feedback';
 
 export default function AdminLoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -25,26 +24,24 @@ export default function AdminLoginScreen({ navigation }) {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail || !password) {
-      Alert.alert(
-        'Missing details',
-        'Please enter your company email and password.'
-      );
+      showMessage('Missing details', 'Please enter your company email and password.');
       return;
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(trimmedEmail)) {
-      Alert.alert('Invalid email', 'Please enter a valid company email.');
+      showMessage('Invalid email', 'Please enter a valid company email.');
       return;
     }
 
     setLoading(true);
     try {
-      const user = await login(trimmedEmail, password);
+      const user = await login(trimmedEmail, password, ['PRIMARY_ADMIN', 'INTERNAL_ADMIN']);
+      showSignInMessage(user);
       navigateByRole(navigation, user.role);
     } catch (error) {
-      showMessage('Sign in failed', apiMessage(error));
+      showMessage(error.code === 'LOGIN_PORTAL_MISMATCH' ? 'Wrong sign-in option' : 'Sign in failed', apiMessage(error));
     } finally {
       setLoading(false);
     }
@@ -97,15 +94,16 @@ export default function AdminLoginScreen({ navigation }) {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="email"
+            returnKeyType="next"
           />
 
           <View style={styles.passwordHeader}>
             <Text style={styles.label}>Password</Text>
 
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert('Password reset unavailable', 'The backend does not provide a password-reset endpoint. Contact your organisation administrator.')
-              }
+              onPress={() => navigation.navigate('PasswordReset', { email, destination: 'AdminLogin' })}
+              accessibilityRole="button"
             >
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -121,6 +119,9 @@ export default function AdminLoginScreen({ navigation }) {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="current-password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
 
             <TouchableOpacity
@@ -137,6 +138,8 @@ export default function AdminLoginScreen({ navigation }) {
             onPress={handleLogin}
             activeOpacity={0.8}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: loading }}
           >
             <Text style={styles.loginButtonText}>{loading ? 'Signing in…' : 'Sign In as Admin'}</Text>
           </TouchableOpacity>

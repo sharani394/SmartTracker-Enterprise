@@ -225,6 +225,23 @@ async function listInternalAdmins(req, res) {
   return res.json({ internalAdmins: users.map(publicUser) });
 }
 
+async function getPrimaryAdmin(req, res) {
+  const user = await User.findOne({
+    organisationId: req.auth.organisationId,
+    role: 'PRIMARY_ADMIN',
+  }).select('_id fullName email status createdAt');
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    primaryAdmin: user ? {
+      id: String(user._id),
+      fullName: user.fullName,
+      email: user.email,
+      status: user.status,
+      createdAt: user.createdAt,
+    } : null,
+  });
+}
+
 async function updateInternalAdminPermissions(req, res) {
   const user = await User.findOne({
     _id: req.params.adminId,
@@ -456,6 +473,7 @@ module.exports = {
   createInternalAdmin,
   acceptInternalAdminInvitation,
   listInternalAdmins,
+  getPrimaryAdmin,
   updateInternalAdminPermissions,
   updateInternalAdminStatus,
   listUsers,

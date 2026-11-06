@@ -10,7 +10,6 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Modal,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
@@ -98,10 +97,7 @@ export default function MemberRegisterScreen({ navigation }) {
 
     for (const field of requiredFields) {
       if (!form[field].trim()) {
-        Alert.alert(
-          'Missing information',
-          'Please complete all required fields.'
-        );
+        showMessage('Missing information', 'Please complete all required fields.');
         return false;
       }
     }
@@ -110,28 +106,22 @@ export default function MemberRegisterScreen({ navigation }) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email)) {
-      Alert.alert('Invalid email', 'Please enter a valid company email.');
+      showMessage('Invalid email', 'Please enter a valid company email.');
       return false;
     }
 
     if (form.password.length < 8) {
-      Alert.alert(
-        'Weak password',
-        'Password must contain at least 8 characters.'
-      );
+      showMessage('Weak password', 'Password must contain at least 8 characters.');
       return false;
     }
 
     if (form.password !== form.confirmPassword) {
-      Alert.alert('Password mismatch', 'Your passwords do not match.');
+      showMessage('Password mismatch', 'Your passwords do not match.');
       return false;
     }
 
     if (form.phone.replace(/\D/g, '').length < 10) {
-      Alert.alert(
-        'Invalid phone number',
-        'Please enter a valid phone number.'
-      );
+      showMessage('Invalid phone number', 'Please enter a valid phone number.');
       return false;
     }
 
@@ -148,8 +138,8 @@ export default function MemberRegisterScreen({ navigation }) {
         employeeId: form.employeeId.trim(), accountType: form.accountType, department: form.department,
         jobTitle: form.jobTitle.trim(), experience: form.experience, skills: form.skills.trim(), password: form.password,
       });
+      showMessage('Registration submitted', result.message || 'Verify your company email. Your organisation administrator must approve your registration.');
       navigation.navigate('EmailVerification', { email, destination: 'MemberLogin', accountType: 'member' });
-      Alert.alert('Registration submitted', result.message || 'Verify your company email. Your organisation administrator must approve your registration.');
     } catch (error) {
       showMessage('Registration failed', apiMessage(error));
     } finally {

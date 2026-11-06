@@ -58,6 +58,7 @@ router.patch('/members/:memberId/approval', authenticate, requireRoles('OWNER', 
 ], asyncHandler(organisationController.reviewMember));
 
 router.get('/internal-admins', authenticate, requirePermission('internalAdmins:manage'), asyncHandler(operations.listInternalAdmins));
+router.get('/primary-admin', authenticate, requireRoles('OWNER', 'PRIMARY_ADMIN'), asyncHandler(operations.getPrimaryAdmin));
 router.post('/internal-admins', authenticate, requirePermission('internalAdmins:manage'), registrationLimiter, [
   body('fullName').trim().isLength({ min: 2, max: 120 }),
   body('email').trim().toLowerCase().isEmail(),

@@ -10,7 +10,6 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiMessage, showMessage } from '../../utils/feedback';
@@ -50,10 +49,7 @@ export default function AdminRegisterScreen({ navigation }) {
 
     for (const field of requiredFields) {
       if (!form[field].trim()) {
-        Alert.alert(
-          'Missing information',
-          'Please fill in all required fields.'
-        );
+        showMessage('Missing information', 'Please fill in all required fields.');
         return false;
       }
     }
@@ -61,28 +57,22 @@ export default function AdminRegisterScreen({ navigation }) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(form.email.trim())) {
-      Alert.alert('Invalid email', 'Please enter a valid company email.');
+      showMessage('Invalid email', 'Please enter a valid company email.');
       return false;
     }
 
     if (!/^\d{6}$/.test(form.registrationCode.trim())) {
-      Alert.alert(
-        'Invalid registration code',
-        'Please enter the 6-digit code provided by your organisation owner.'
-      );
+      showMessage('Invalid registration code', 'Please enter the 6-digit code provided by your organisation owner.');
       return false;
     }
 
     if (form.password.length < 8) {
-      Alert.alert(
-        'Weak password',
-        'Password must contain at least 8 characters.'
-      );
+      showMessage('Weak password', 'Password must contain at least 8 characters.');
       return false;
     }
 
     if (form.password !== form.confirmPassword) {
-      Alert.alert('Password mismatch', 'Your passwords do not match.');
+      showMessage('Password mismatch', 'Your passwords do not match.');
       return false;
     }
 
@@ -98,8 +88,8 @@ export default function AdminRegisterScreen({ navigation }) {
         organisationName: form.organisationName.trim(), fullName: form.fullName.trim(), email,
         phone: form.phone.trim(), registrationCode: form.registrationCode.trim(), password: form.password,
       });
+      showMessage('Registration submitted', result.message || 'Verify your company email to activate the Primary Admin account.');
       navigation.navigate('EmailVerification', { email, destination: 'AdminLogin', accountType: 'admin' });
-      Alert.alert('Registration submitted', result.message || 'Verify your company email to activate the Primary Admin account.');
     } catch (error) {
       showMessage('Registration failed', apiMessage(error));
     } finally {

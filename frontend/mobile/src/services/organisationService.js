@@ -13,6 +13,7 @@ export const organisationService = {
     method: 'PATCH', body: { decision, ...(approvedRole ? { approvedRole } : {}), ...(reason ? { reason } : {}) },
   }),
   listInternalAdmins: () => apiRequest('organisations/internal-admins'),
+  getPrimaryAdmin: () => apiRequest('organisations/primary-admin'),
   inviteInternalAdmin: (payload) => apiRequest('organisations/internal-admins', { method: 'POST', body: payload }),
   updateInternalAdminPermissions: (adminId, permissions) => apiRequest(`organisations/internal-admins/${encodeURIComponent(adminId)}/permissions`, { method: 'PATCH', body: { permissions } }),
   updateInternalAdminStatus: (adminId, status) => apiRequest(`organisations/internal-admins/${encodeURIComponent(adminId)}/status`, { method: 'PATCH', body: { status } }),

@@ -26,6 +26,17 @@ async function sendVerificationCode({ email, fullName, code, expiresInMinutes })
   });
 }
 
+async function sendPasswordResetCode({ email, fullName, code, expiresInMinutes }) {
+  const transporter = getTransporter();
+  await transporter.sendMail({
+    from: config.emailFrom,
+    to: email,
+    subject: 'Reset your SmartTracker password',
+    text: `Hello ${fullName},\n\nYour SmartTracker password reset code is ${code}. It expires in ${expiresInMinutes} minutes. If you did not request this, you can ignore this email.`,
+    html: `<p>Hello ${escapeHtml(fullName)},</p><p>Your SmartTracker password reset code is <strong>${code}</strong>.</p><p>It expires in ${expiresInMinutes} minutes. If you did not request this, you can ignore this email.</p>`,
+  });
+}
+
 async function sendAdminInvitation({ email, fullName, code, expiresInMinutes }) {
   const transporter = getTransporter();
   await transporter.sendMail({
@@ -43,4 +54,4 @@ function escapeHtml(value) {
   }[character]));
 }
 
-module.exports = { sendVerificationCode, sendAdminInvitation };
+module.exports = { sendVerificationCode, sendPasswordResetCode, sendAdminInvitation };

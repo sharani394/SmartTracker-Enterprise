@@ -7,10 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Switch,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { apiMessage } from '../../utils/feedback';
+import { apiMessage, showMessage } from '../../utils/feedback';
 import { authService } from '../../services/authService';
 
 export default function OwnerSecurityScreen({ navigation }) {
@@ -54,12 +53,26 @@ export default function OwnerSecurityScreen({ navigation }) {
     }
 
     setSavingPassword(true);
+    let passwordChanged = false;
     try {
       await changePassword(currentPassword, newPassword);
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-      setMessage('Password updated successfully.');
-    } catch (error) { setMessage(apiMessage(error)); }
+      passwordChanged = true;
+    } catch (error) {
+      const errorMessage = apiMessage(error);
+      setMessage(errorMessage);
+      showMessage('Could not update password', errorMessage);
+    }
     finally { setSavingPassword(false); }
+
+    if (passwordChanged) {
+      showMessage('Password updated', 'For your security, you are being signed out. Sign in again with your new password.');
+      try {
+        await logout();
+      } catch (error) {
+        showMessage('Please sign in again', `Your password was updated. Sign in with your new password. ${apiMessage(error)}`);
+      }
+    }
   };
 
   return (
@@ -120,35 +133,9 @@ export default function OwnerSecurityScreen({ navigation }) {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Account Protection</Text>
-        <Text style={styles.description}>Two-factor authentication and login-alert preferences are not available in the connected backend yet.</Text>
-
-        <View style={styles.settingRow}>
-          <View style={styles.settingText}>
-            <Text style={styles.settingTitle}>Two-Factor Authentication</Text>
-            <Text style={styles.description}>
-              Two-factor authentication is not available through the connected backend.
-            </Text>
-          </View>
-          <Switch
-            value={false}
-            disabled
-            trackColor={{ false: '#D5DCE8', true: '#3157D5' }}
-          />
-        </View>
-
-        <View style={styles.settingRow}>
-          <View style={styles.settingText}>
-            <Text style={styles.settingTitle}>Login Alerts</Text>
-            <Text style={styles.description}>
-              Login alert preferences are not available through the connected backend.
-            </Text>
-          </View>
-          <Switch
-            value={false}
-            disabled
-            trackColor={{ false: '#D5DCE8', true: '#3157D5' }}
-          />
-        </View>
+        <Text style={styles.description}>
+          Two-step verification and new sign-in alerts are not enabled in this release. Passwords are protected with secure hashing, and active sessions can be reviewed or revoked below.
+        </Text>
       </View>
 
       <View style={styles.card}>

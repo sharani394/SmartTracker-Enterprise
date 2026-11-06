@@ -43,6 +43,14 @@ router.post('/email-verification/confirm', authLimiter, [
 
 router.post('/email-verification/resend', authLimiter, [emailField, validateRequest], asyncHandler(auth.resendVerification));
 
+router.post('/password-reset/request', authLimiter, [emailField, validateRequest], asyncHandler(auth.requestPasswordReset));
+router.post('/password-reset/confirm', authLimiter, [
+  emailField,
+  body('code').matches(/^\d{6}$/).withMessage('Password reset code must be six digits.'),
+  passwordField,
+  validateRequest,
+], asyncHandler(auth.confirmPasswordReset));
+
 router.post('/internal-admin-invitations/accept', authLimiter, [
   emailField,
   body('code').matches(/^\d{6}$/).withMessage('Invitation code must be six digits.'),

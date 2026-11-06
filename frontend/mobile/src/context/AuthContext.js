@@ -63,25 +63,61 @@ export function AuthProvider({ children }) {
     };
   }, [clearAuthState]);
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, allowedRoles) => {
     const result = await authService.login(email.trim().toLowerCase(), password);
     await tokenStore.saveSession(result.session);
+
+    if (allowedRoles && !allowedRoles.includes(result.user.role)) {
+      let revokeError;
+      try {
+        await authService.logout();
+      } catch (error) {
+        if (error?.status !== 401) revokeError = error;
+      } finally {
+        try {
+          await tokenStore.clearSession();
+        } finally {
+          clearAuthState();
+        }
+      }
+
+      const roleName = result.user.role.replaceAll('_', ' ').toLowerCase();
+      const error = new Error(
+        `This account is registered as ${roleName}. Select the matching sign-in option and try again.${revokeError ? ' Server sign-out could not be confirmed, so reconnect and sign out before continuing.' : ''}`
+      );
+      error.code = 'LOGIN_PORTAL_MISMATCH';
+      throw error;
+    }
+
     setUser(result.user);
     setOrganisation(null);
     try {
-      await loadProfile();
-    } catch {
-      // Login remains valid; screens still have the server's verified user record.
+      const profile = await loadProfile();
+      return profile.user;
+    } catch (profileError) {
+      if (profileError?.status === 401 || profileError?.status === 403) {
+        try {
+          await tokenStore.clearSession();
+        } finally {
+          clearAuthState();
+        }
+        throw profileError;
+      }
+      return { ...result.user, profileLoadError: profileError };
     }
-    return result.user;
-  }, [loadProfile]);
+  }, [clearAuthState, loadProfile]);
 
   const logout = useCallback(async () => {
     try {
       if (user) await authService.logout();
+    } catch (error) {
+      if (error?.status !== 401) throw error;
     } finally {
-      await tokenStore.clearSession();
-      clearAuthState();
+      try {
+        await tokenStore.clearSession();
+      } finally {
+        clearAuthState();
+      }
     }
   }, [clearAuthState, user]);
 
@@ -112,6 +148,8 @@ export function AuthProvider({ children }) {
     registerMember: authService.registerMember,
     confirmEmail: authService.confirmEmail,
     resendVerification: authService.resendVerification,
+    requestPasswordReset: authService.requestPasswordReset,
+    confirmPasswordReset: authService.confirmPasswordReset,
     acceptInternalAdminInvitation: authService.acceptInternalAdminInvitation,
     issuePrimaryAdminCode: authService.issuePrimaryAdminCode,
     changePassword: authService.changePassword,

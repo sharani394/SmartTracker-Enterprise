@@ -66,13 +66,60 @@ describe('AuthContext session lifecycle', () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    await act(async () => { await result.current.login('person@example.org', 'password'); });
+    await act(async () => { await result.current.login('person@example.org', 'password', ['EMPLOYEE']); });
     expect(result.current.user.fullName).toBe('Member');
     expect(result.current.isAuthenticated).toBe(true);
 
     await act(async () => { await result.current.logout(); });
     expect(authService.logout).toHaveBeenCalledTimes(1);
     expect(tokenStore.clearSession).toHaveBeenCalledTimes(1);
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  test('rejects a login from the wrong portal and clears the issued session', async () => {
+    authService.login.mockResolvedValue({
+      user: { id: 'owner-1', role: 'OWNER' },
+      session: { accessToken: 'access-1', refreshToken: 'refresh-1' },
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let loginError;
+    await act(async () => {
+      try {
+        await result.current.login('person@example.org', 'password', ['EMPLOYEE']);
+      } catch (error) {
+        loginError = error;
+      }
+    });
+
+    expect(loginError).toMatchObject({ code: 'LOGIN_PORTAL_MISMATCH' });
+    expect(authService.logout).toHaveBeenCalledTimes(1);
+    expect(tokenStore.clearSession).toHaveBeenCalledTimes(1);
+    expect(authService.me).not.toHaveBeenCalled();
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  test('logout clears local credentials when the server session has already expired', async () => {
+    let accessToken = null;
+    tokenStore.getAccessToken.mockImplementation(() => accessToken);
+    tokenStore.saveSession.mockImplementation(async (session) => { accessToken = session.accessToken; });
+    tokenStore.clearSession.mockImplementation(async () => { accessToken = null; });
+    authService.login.mockResolvedValue({
+      user: { id: 'employee-1', role: 'EMPLOYEE' },
+      session: { accessToken: 'access-1', refreshToken: 'refresh-1' },
+    });
+    authService.me.mockResolvedValue({ user: { id: 'employee-1', role: 'EMPLOYEE' } });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => { await result.current.login('person@example.org', 'password'); });
+
+    authService.logout.mockRejectedValueOnce({ status: 401, message: 'Session already expired.' });
+    await act(async () => { await result.current.logout(); });
+
+    expect(tokenStore.clearSession).toHaveBeenCalled();
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
   });

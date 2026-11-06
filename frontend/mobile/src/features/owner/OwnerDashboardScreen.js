@@ -53,19 +53,29 @@ export default function OwnerDashboardScreen({ navigation }) {
   const { user, organisation, logout, updateOrganisationSettings, issuePrimaryAdminCode } = useAuth();
   const [activeSection, setActiveSection] = useState('overview');
   const [employees, setEmployees] = useState([]); const [agents, setAgents] = useState([]); const [pendingMembers, setPendingMembers] = useState([]); const [internalAdmins, setInternalAdmins] = useState([]);
+  const [primaryAdmin, setPrimaryAdmin] = useState(undefined);
   const [ownerReport, setOwnerReport] = useState(null); const [dashboardError, setDashboardError] = useState('');
   const [orgForm, setOrgForm] = useState({ name: '', industry: '', country: '', supportEmail: '', timezone: '' });
   const [code, setCode] = useState(null); const [currentPassword, setCurrentPassword] = useState(''); const [replaceAdmin, setReplaceAdmin] = useState(false);
   const [loading, setLoading] = useState(false); const [savingOrg, setSavingOrg] = useState(false);
   const refreshOwnerData = async () => {
     setLoading(true); setDashboardError('');
-    const results = await Promise.allSettled([organisationService.listUsers({ role: 'EMPLOYEE' }), organisationService.listUsers({ role: 'SUPPORT_AGENT' }), organisationService.listPendingMembers(), organisationService.listInternalAdmins(), organisationService.getSettings(), reportService.summary()]);
+    const results = await Promise.allSettled([
+      organisationService.listUsers({ role: 'EMPLOYEE' }),
+      organisationService.listUsers({ role: 'SUPPORT_AGENT' }),
+      organisationService.listPendingMembers(),
+      organisationService.listInternalAdmins(),
+      organisationService.getPrimaryAdmin(),
+      organisationService.getSettings(),
+      reportService.summary(),
+    ]);
     if (results[0].status === 'fulfilled') setEmployees(results[0].value.users || []);
     if (results[1].status === 'fulfilled') setAgents(results[1].value.users || []);
     if (results[2].status === 'fulfilled') setPendingMembers(results[2].value.members || []);
     if (results[3].status === 'fulfilled') setInternalAdmins(results[3].value.internalAdmins || []);
-    if (results[4].status === 'fulfilled') { const org = results[4].value.organisation; setOrgForm({ name: org.name || '', industry: org.industry || '', country: org.country || '', supportEmail: org.settings?.supportEmail || '', timezone: org.settings?.timezone || '' }); }
-    if (results[5].status === 'fulfilled') setOwnerReport(results[5].value);
+    if (results[4].status === 'fulfilled') setPrimaryAdmin(results[4].value.primaryAdmin || null);
+    if (results[5].status === 'fulfilled') { const org = results[5].value.organisation; setOrgForm({ name: org.name || '', industry: org.industry || '', country: org.country || '', supportEmail: org.settings?.supportEmail || '', timezone: org.settings?.timezone || '' }); }
+    if (results[6].status === 'fulfilled') setOwnerReport(results[6].value);
     const failed = results.find((item) => item.status === 'rejected'); if (failed) setDashboardError(apiMessage(failed.reason));
     setLoading(false);
   };
@@ -76,10 +86,6 @@ export default function OwnerDashboardScreen({ navigation }) {
     { label: 'Internal Admins', value: internalAdmins.length, change: 'Delegated administration', icon: '🛡️', color: '#A45E12', bg: '#FFF3E5' },
     { label: 'Pending Approvals', value: pendingMembers.length, change: 'Awaiting admin action', icon: '⏳', color: '#9B51C6', bg: '#F5EAFE' },
   ];
-
-  const showComingSoon = (feature) => {
-    showMessage(feature, 'This operation is not available through the connected backend API.');
-  };
 
   // Overview
   const renderOverview = () => (
@@ -102,12 +108,20 @@ export default function OwnerDashboardScreen({ navigation }) {
         </Text>
 
         <View style={styles.adminStatus}>
-          <View style={styles.statusDot} />
+          <View style={[styles.statusDot, { backgroundColor: primaryAdmin?.status === 'ACTIVE' ? '#16845B' : primaryAdmin === null ? '#98A2B3' : '#D58A21' }]} />
           <View style={styles.adminStatusText}>
-            <Text style={styles.adminStatusTitle}>Primary Admin</Text>
-            <Text style={styles.mutedText}>Administrator details are not returned by the current API.</Text>
+            <Text style={styles.adminStatusTitle}>{primaryAdmin?.fullName || 'Primary Admin'}</Text>
+            <Text style={styles.mutedText}>
+              {primaryAdmin === undefined
+                ? 'Loading administrator details…'
+                : primaryAdmin
+                  ? `${primaryAdmin.email} · ${primaryAdmin.status.replaceAll('_', ' ').toLowerCase()}`
+                  : 'No Primary Admin has been appointed yet.'}
+            </Text>
           </View>
-          <Text style={styles.activeLabel}>Details unavailable</Text>
+          <Text style={styles.activeLabel}>
+            {primaryAdmin === undefined ? 'Loading' : primaryAdmin ? primaryAdmin.status.replaceAll('_', ' ') : 'Not appointed'}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -219,15 +233,19 @@ export default function OwnerDashboardScreen({ navigation }) {
             <Text style={styles.avatarText}>PA</Text>
           </View>
           <View style={styles.personInfo}>
-            <Text style={styles.personName}>Primary Admin</Text>
+            <Text style={styles.personName}>{primaryAdmin?.fullName || 'Primary Admin'}</Text>
             <Text style={styles.mutedText}>
-              Primary administrator account
+              {primaryAdmin === undefined
+                ? 'Loading administrator details…'
+                : primaryAdmin
+                  ? `${primaryAdmin.email} · ${primaryAdmin.status.replaceAll('_', ' ').toLowerCase()}`
+                  : 'No Primary Admin has been appointed yet.'}
             </Text>
           </View>
-          <Text style={styles.activeLabel}>Active</Text>
+          <Text style={styles.activeLabel}>
+            {primaryAdmin === undefined ? 'Loading' : primaryAdmin ? primaryAdmin.status.replaceAll('_', ' ') : 'Not appointed'}
+          </Text>
         </View>
-
-        <Text style={styles.smallNote}>The current owner APIs can issue or replace the appointment code but do not return the appointed administrator’s profile.</Text>
       </View>
 
       <View style={styles.panel}>
@@ -261,7 +279,10 @@ export default function OwnerDashboardScreen({ navigation }) {
           style={styles.primaryButton}
           onPress={async () => {
             try { const result = await issuePrimaryAdminCode(replaceAdmin ? { replaceCurrent: true, currentPassword } : {}); setCode(result); setCurrentPassword(''); setReplaceAdmin(false); }
-            catch (error) { if (error.status === 409 && !replaceAdmin) setReplaceAdmin(true); else showComingSoon(apiMessage(error)); }
+            catch (error) {
+              if (error.status === 409 && !replaceAdmin) setReplaceAdmin(true);
+              else showMessage('Could not generate admin code', apiMessage(error));
+            }
           }}
         >
           <Text style={styles.primaryButtonText}>
@@ -299,7 +320,7 @@ export default function OwnerDashboardScreen({ navigation }) {
           onPress={async () => {
             setSavingOrg(true);
             try { const changes = Object.fromEntries(Object.entries(orgForm).filter(([key, value]) => ['name', 'industry', 'country'].includes(key) || value.trim())); await updateOrganisationSettings(changes); await refreshOwnerData(); }
-            catch (error) { showComingSoon(apiMessage(error)); }
+            catch (error) { showMessage('Could not update organisation', apiMessage(error)); }
             finally { setSavingOrg(false); }
           }}
         >
@@ -426,7 +447,7 @@ export default function OwnerDashboardScreen({ navigation }) {
                   break;
 
                 default:
-                  showComingSoon(title);
+                  break;
               }
             }}
           >

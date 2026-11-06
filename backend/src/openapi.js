@@ -89,6 +89,13 @@ const openApiDocument = {
         503: errorResponse('SMTP email delivery is unavailable.'),
       }, { operationId: 'inviteInternalAdmin', security: auth, requestBody: body('InternalAdminCreateRequest') }),
     },
+    '/api/v1/organisations/primary-admin': {
+      get: operation('Organisations', 'Get the Primary Admin for the authenticated organisation', {
+        200: { description: 'Primary Admin details, or null if no Primary Admin is currently appointed.', content: json(ref('PrimaryAdminDetailsResponse')) },
+        401: errorResponse('Authentication is required.'),
+        403: errorResponse('Owner or Primary Admin access is required.'),
+      }, { operationId: 'getPrimaryAdmin', security: auth }),
+    },
     '/api/v1/organisations/internal-admins/{adminId}/permissions': {
       patch: operation('Organisations', 'Replace an Internal Admin permission set', {
         200: { description: 'Updated delegated permissions.', content: json(ref('InternalAdminResponse')) },
@@ -203,6 +210,20 @@ const openApiDocument = {
         400: errorResponse('Invalid email address.'),
         429: errorResponse('Authentication request rate limit reached.'),
       }, { operationId: 'resendVerification', requestBody: body('EmailVerificationResendRequest') }),
+    },
+    '/api/v1/auth/password-reset/request': {
+      post: operation('Authentication', 'Request a password reset code', {
+        202: { description: 'Generic response to avoid account enumeration.', content: json(ref('MessageResponse')) },
+        400: errorResponse('Invalid email address.'),
+        429: errorResponse('Authentication request rate limit reached.'),
+      }, { operationId: 'requestPasswordReset', requestBody: body('EmailVerificationResendRequest') }),
+    },
+    '/api/v1/auth/password-reset/confirm': {
+      post: operation('Authentication', 'Reset a password with a one-time email code', {
+        200: { description: 'Password updated and existing sessions revoked.', content: json(ref('MessageResponse')) },
+        400: errorResponse('Reset code is invalid, expired or locked after failed attempts.'),
+        429: errorResponse('Authentication request rate limit reached.'),
+      }, { operationId: 'confirmPasswordReset', requestBody: body('PasswordResetConfirmRequest') }),
     },
     '/api/v1/auth/internal-admin-invitations/accept': {
       post: operation('Authentication', 'Accept an Internal Admin invitation and set the account password', {
@@ -444,6 +465,13 @@ const openApiDocument = {
       },
       EmailVerificationResendRequest: { type: 'object', required: ['email'], properties: { email: { type: 'string', format: 'email', example: 'alex@example.org' } } },
       EmailVerificationResponse: { type: 'object', properties: { message: { type: 'string' }, user: ref('User') } },
+      PasswordResetConfirmRequest: {
+        type: 'object', required: ['email', 'code', 'password'], properties: {
+          email: { type: 'string', format: 'email', example: 'alex@example.org' },
+          code: { type: 'string', pattern: '^\\d{6}$', example: '000000' },
+          password: { type: 'string', format: 'password', minLength: 8, maxLength: 128, example: '<new-password>' },
+        },
+      },
       PrimaryAdminCodeResponse: {
         type: 'object', properties: {
           message: { type: 'string' }, code: { type: 'string', description: 'One-time code shown only to the authenticated Owner.', example: '000000' }, expiresAt: { type: 'string', format: 'date-time' },
@@ -505,6 +533,27 @@ const openApiDocument = {
       },
       InternalAdminResponse: { type: 'object', properties: { message: { type: 'string' }, internalAdmin: ref('User'), user: ref('User') } },
       InternalAdminListResponse: { type: 'object', properties: { internalAdmins: { type: 'array', items: ref('User') } } },
+      PrimaryAdminDetailsResponse: {
+        type: 'object',
+        properties: {
+          primaryAdmin: {
+            type: 'object',
+            nullable: true,
+            allOf: [ref('PrimaryAdminDetails')],
+          },
+        },
+      },
+      PrimaryAdminDetails: {
+        type: 'object',
+        required: ['id', 'fullName', 'email', 'status', 'createdAt'],
+        properties: {
+          id: { type: 'string', format: 'mongo-id' },
+          fullName: { type: 'string' },
+          email: { type: 'string', format: 'email' },
+          status: { type: 'string', enum: ['PENDING_EMAIL', 'ACTIVE', 'SUSPENDED'] },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
       UserListResponse: { type: 'object', properties: { users: { type: 'array', items: ref('User') } } },
       OrganisationSettings: {
         type: 'object', properties: {

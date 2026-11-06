@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,28 @@ import {
   StyleSheet,
   Switch,
 } from 'react-native';
+import { organisationService } from '../../services/organisationService';
+import { apiMessage } from '../../utils/feedback';
 
 export default function OwnerAccessScreen({ navigation }) {
+  const [primaryAdmin, setPrimaryAdmin] = useState(undefined);
+  const [primaryAdminError, setPrimaryAdminError] = useState('');
+  const primaryAdminStatus = primaryAdmin?.status
+    ? primaryAdmin.status.replaceAll('_', ' ').toLowerCase()
+    : 'status unavailable';
+
+  useEffect(() => {
+    let active = true;
+    organisationService.getPrimaryAdmin()
+      .then((result) => {
+        if (active) setPrimaryAdmin(result.primaryAdmin || null);
+      })
+      .catch((error) => {
+        if (active) setPrimaryAdminError(apiMessage(error));
+      });
+    return () => { active = false; };
+  }, []);
+
   const securityItems = [
     {
       title: 'Email Domain Verification',
@@ -50,8 +70,8 @@ export default function OwnerAccessScreen({ navigation }) {
           Review the current security configuration of your workspace.
         </Text>
         <View style={styles.statusRow}>
-          <View style={styles.greenDot} />
-          <Text style={styles.statusText}>Security settings available</Text>
+          <View style={styles.amberDot} />
+          <Text style={styles.reviewText}>Core access controls enforced</Text>
         </View>
         <Text style={styles.smallNote}>
           The backend enforces company-domain validation and organisation permissions. Two-factor and login-alert preferences are not exposed by the current API.
@@ -83,7 +103,15 @@ export default function OwnerAccessScreen({ navigation }) {
           <Text style={styles.cardDescription}>
             One Primary Admin is responsible for daily organisation operations.
           </Text>
-          <Text style={styles.enabled}>Administrator account details are not exposed by the current API.</Text>
+          <Text style={primaryAdminError ? styles.disabled : styles.enabled}>
+            {primaryAdminError
+              ? `Could not load administrator details: ${primaryAdminError}`
+              : primaryAdmin === undefined
+                ? 'Loading administrator details…'
+                : primaryAdmin
+                ? `${primaryAdmin.fullName} · ${primaryAdmin.email} · ${primaryAdminStatus}`
+                  : 'No Primary Admin has been appointed yet.'}
+          </Text>
         </View>
       </View>
 
@@ -128,8 +156,8 @@ const styles = StyleSheet.create({
   statusTitle: { fontSize: 16, fontWeight: '800', color: '#17233D' },
   statusDescription: { color: '#8792A5', fontSize: 11, marginTop: 6 },
   statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 15 },
-  greenDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#16845B', marginRight: 8 },
-  statusText: { color: '#16845B', fontSize: 12, fontWeight: '700' },
+  amberDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#D58A21', marginRight: 8 },
+  reviewText: { color: '#A45E12', fontSize: 12, fontWeight: '700' },
   smallNote: { color: '#929CAE', fontSize: 10, lineHeight: 16, marginTop: 12 },
   sectionTitle: { color: '#17233D', fontSize: 16, fontWeight: '800', marginBottom: 11, marginTop: 4 },
   settingCard: { backgroundColor: '#FFFFFF', borderRadius: 13, padding: 15, marginBottom: 10, borderWidth: 1, borderColor: '#EAEFF5', flexDirection: 'row', alignItems: 'center' },

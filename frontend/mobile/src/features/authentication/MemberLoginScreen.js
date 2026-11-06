@@ -6,13 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { apiMessage, navigateByRole, showMessage } from '../../utils/feedback';
+import { apiMessage, navigateByRole, showMessage, showSignInMessage } from '../../utils/feedback';
 
 export default function MemberLoginScreen({ navigation }) {
   const [role, setRole] = useState('employee');
@@ -26,23 +25,25 @@ export default function MemberLoginScreen({ navigation }) {
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail || !password) {
-      Alert.alert('Missing details', 'Enter your company email and password.');
+      showMessage('Missing details', 'Enter your company email and password.');
       return;
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(cleanEmail)) {
-      Alert.alert('Invalid email', 'Enter a valid company email address.');
+      showMessage('Invalid email', 'Enter a valid company email address.');
       return;
     }
 
     setLoading(true);
     try {
-      const user = await login(cleanEmail, password);
+      const expectedRole = role === 'agent' ? 'SUPPORT_AGENT' : 'EMPLOYEE';
+      const user = await login(cleanEmail, password, [expectedRole]);
+      showSignInMessage(user);
       navigateByRole(navigation, user.role);
     } catch (error) {
-      showMessage('Sign in failed', apiMessage(error));
+      showMessage(error.code === 'LOGIN_PORTAL_MISMATCH' ? 'Wrong sign-in option' : 'Sign in failed', apiMessage(error));
     } finally {
       setLoading(false);
     }
@@ -127,6 +128,8 @@ export default function MemberLoginScreen({ navigation }) {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="email"
+            returnKeyType="next"
           />
 
           <Text style={styles.label}>Password</Text>
@@ -139,6 +142,9 @@ export default function MemberLoginScreen({ navigation }) {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
+              autoComplete="current-password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
 
             <TouchableOpacity
@@ -152,9 +158,8 @@ export default function MemberLoginScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.forgotButton}
-            onPress={() =>
-              Alert.alert('Password reset unavailable', 'The backend does not provide a password-reset endpoint. Contact your organisation administrator.')
-            }
+            onPress={() => navigation.navigate('PasswordReset', { email, destination: 'MemberLogin' })}
+            accessibilityRole="button"
           >
             <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
@@ -163,6 +168,8 @@ export default function MemberLoginScreen({ navigation }) {
             style={styles.loginButton}
             onPress={handleLogin}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: loading }}
           >
             <Text style={styles.loginButtonText}>
               {loading ? 'Signing in…' : `Sign In as ${role === 'agent' ? 'Support Agent' : 'Employee'}`}

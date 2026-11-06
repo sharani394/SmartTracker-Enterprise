@@ -11,6 +11,7 @@ import AdminRegisterScreen from '../features/authentication/AdminRegisterScreen'
 import MemberRegisterScreen from '../features/authentication/MemberRegisterScreen';
 import EmailVerificationScreen from '../features/authentication/EmailVerificationScreen';
 import InternalAdminInvitationScreen from '../features/authentication/InternalAdminInvitationScreen';
+import PasswordResetScreen from '../features/authentication/PasswordResetScreen';
 
 // Login screens
 import OwnerLoginScreen from '../features/authentication/OwnerLoginScreen';
@@ -71,6 +72,7 @@ export default function RootNavigator() {
       />
       <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="InternalAdminInvitation" component={InternalAdminInvitationScreen} />
+      <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
 
       {/* Login */}
       <Stack.Screen
