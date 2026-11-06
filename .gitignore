@@ -1,0 +1,38 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies
+node_modules/
+
+# Expo and React Native
+.expo/
+.expo-shared/
+web-build/
+dist/
+
+# Build outputs
+build/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+
+# AWS credentials and configuration
+.aws/
+
+# Git
+.git/
+
