@@ -64,35 +64,71 @@ export default function WelcomeScreen({ navigation }) {
             <Text style={styles.brand}>SmartTracker</Text>
           </View>
 
-          {/* Introduction */}
-          <View style={styles.intro}>
-            <Text style={styles.eyebrow}>
-              SMARTER WORKFLOW. BETTER SUPPORT.
-            </Text>
-
-            <Text style={styles.title}>
-              Manage every issue.
-              {'\n'}
-              <Text style={styles.highlight}>
-                Empower every team.
+          <View style={[styles.hero, isWideScreen && styles.wideHero]}>
+            <View style={[styles.intro, isWideScreen && styles.wideIntro]}>
+              <Text style={styles.eyebrow}>
+                SMARTER WORKFLOW. BETTER SUPPORT.
               </Text>
-            </Text>
 
-            <Text style={styles.description}>
-              A unified platform for organisations to manage support
-              requests, coordinate teams and resolve issues efficiently.
-            </Text>
+              <Text style={styles.title}>
+                Manage every issue.
+                {'\n'}
+                <Text style={styles.highlight}>
+                  Empower every team.
+                </Text>
+              </Text>
+
+              <Text style={styles.description}>
+                Bring support requests, people and progress together in one clear workspace.
+              </Text>
+            </View>
+
+            {isWideScreen ? (
+              <View
+                style={styles.previewCard}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                <View style={styles.previewHeader}>
+                  <View style={styles.previewMark}><Text style={styles.previewMarkText}>S</Text></View>
+                  <View>
+                    <Text style={styles.previewEyebrow}>WORKSPACE PREVIEW</Text>
+                    <Text style={styles.previewHeading}>A clearer way to work</Text>
+                  </View>
+                </View>
+                <View style={styles.previewDivider} />
+                {[
+                  ['01', 'Capture every request', 'Keep the details together', '#3157D5', '#EAF0FF'],
+                  ['02', 'Connect the right team', 'Make ownership clear', '#16845B', '#E8F7EF'],
+                  ['03', 'Move work forward', 'Track progress to resolution', '#A45E12', '#FFF3E5'],
+                ].map(([number, title, description, color, background]) => (
+                  <View style={styles.previewRow} key={number}>
+                    <View style={[styles.previewNumber, { backgroundColor: background }]}>
+                      <Text style={[styles.previewNumberText, { color }]}>{number}</Text>
+                    </View>
+                    <View style={styles.previewCopy}>
+                      <Text style={styles.previewRowTitle}>{title}</Text>
+                      <Text style={styles.previewRowDescription}>{description}</Text>
+                    </View>
+                    <Text style={[styles.previewArrow, { color }]}>›</Text>
+                  </View>
+                ))}
+                <View style={styles.previewFoot}>
+                  <View style={styles.previewFootDot} />
+                  <Text style={styles.previewFootText}>One connected support workflow</Text>
+                </View>
+              </View>
+            ) : null}
           </View>
 
           {/* Registration and Login Options */}
           <View style={styles.registrationSection}>
-            <Text style={styles.sectionTitle}>
-              Get started with SmartTracker
-            </Text>
-
-            <Text style={styles.sectionSubtitle}>
-              Select your account type to register or sign in.
-            </Text>
+            <View style={styles.sectionHeading}>
+              <Text style={styles.sectionTitle}>Choose your workspace</Text>
+              <Text style={styles.sectionSubtitle}>
+                Select your role to create an account or continue to sign in.
+              </Text>
+            </View>
 
             <View
               style={[
@@ -197,7 +233,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 55,
+    marginBottom: 42,
   },
 
   logo: {
@@ -225,6 +261,95 @@ const styles = StyleSheet.create({
     maxWidth: 750,
     marginBottom: 42,
   },
+
+  hero: {
+    marginBottom: 10,
+  },
+
+  wideHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 48,
+    marginBottom: 44,
+  },
+
+  wideIntro: {
+    flex: 1,
+    maxWidth: 570,
+    marginBottom: 0,
+  },
+
+  previewCard: {
+    width: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5EAF3',
+    padding: 21,
+    shadowColor: '#17233D',
+    shadowOpacity: 0.07,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 3,
+  },
+
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 18,
+  },
+
+  previewMark: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#3157D5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  previewMarkText: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
+  previewEyebrow: { color: '#8A96AA', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  previewHeading: { color: '#17233D', fontSize: 14, fontWeight: '800', marginTop: 3 },
+  previewDivider: { height: 1, backgroundColor: '#EEF1F6', marginBottom: 8 },
+
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F2F7',
+  },
+
+  previewNumber: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 11,
+  },
+
+  previewNumberText: { fontSize: 10, fontWeight: '800' },
+  previewCopy: { flex: 1 },
+  previewRowTitle: { color: '#27344D', fontSize: 11, fontWeight: '800' },
+  previewRowDescription: { color: '#8490A3', fontSize: 10, marginTop: 4 },
+  previewArrow: { fontSize: 23, marginLeft: 8 },
+
+  previewFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 9,
+    backgroundColor: '#F6F8FC',
+  },
+
+  previewFootDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#16845B', marginRight: 8 },
+  previewFootText: { color: '#667085', fontSize: 10, fontWeight: '600' },
 
   eyebrow: {
     color: '#3157D5',
@@ -264,10 +389,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  sectionHeading: {
+    marginBottom: 22,
+  },
+
   sectionSubtitle: {
     fontSize: 14,
     color: '#667085',
-    marginBottom: 22,
+    marginTop: 7,
   },
 
   cardsContainer: {

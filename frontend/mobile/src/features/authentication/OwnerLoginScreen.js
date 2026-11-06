@@ -168,6 +168,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     justifyContent: 'center',
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
   backButton: {
     alignSelf: 'flex-start',
