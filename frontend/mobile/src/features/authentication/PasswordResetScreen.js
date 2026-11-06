@@ -63,7 +63,7 @@ export default function PasswordResetScreen({ navigation, route }) {
     try {
       const result = await confirmPasswordReset(email, code.trim(), password);
       showMessage('Password updated', result.message || 'Sign in with your new password.');
-      navigation.replace(destination);
+      navigation.replace(destination, route.params?.destinationParams);
     } catch (error) {
       showMessage('Could not reset password', apiMessage(error));
     } finally {

@@ -13,8 +13,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { apiMessage, navigateByRole, showMessage, showSignInMessage } from '../../utils/feedback';
 
-export default function MemberLoginScreen({ navigation }) {
-  const [role, setRole] = useState('employee');
+export default function MemberLoginScreen({ navigation, route }) {
+  const [role, setRole] = useState(route.params?.accountType === 'Support Agent' ? 'agent' : 'employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -71,7 +71,7 @@ export default function MemberLoginScreen({ navigation }) {
         </View>
 
         <Text style={styles.brand}>SmartTracker</Text>
-        <Text style={styles.heading}>Member Sign In</Text>
+        <Text style={styles.heading}>{role === 'agent' ? 'Support Agent Sign In' : 'Employee Sign In'}</Text>
         <Text style={styles.subtitle}>
           Sign in to raise tickets or manage your assigned support requests.
         </Text>
@@ -173,7 +173,11 @@ export default function MemberLoginScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.forgotButton}
-            onPress={() => navigation.navigate('PasswordReset', { email, destination: 'MemberLogin' })}
+            onPress={() => navigation.navigate('PasswordReset', {
+              email,
+              destination: 'MemberLogin',
+              destinationParams: { accountType: role === 'agent' ? 'Support Agent' : 'Employee' },
+            })}
             accessibilityRole="button"
           >
             <Text style={styles.forgotText}>Forgot password?</Text>
@@ -194,9 +198,13 @@ export default function MemberLoginScreen({ navigation }) {
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>New to SmartTracker? </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('MemberRegister')}
+              onPress={() => navigation.navigate('MemberRegister', {
+                accountType: role === 'agent' ? 'Support Agent' : 'Employee',
+              })}
+              accessibilityRole="button"
+              accessibilityLabel={`Register as ${role === 'agent' ? 'Support Agent' : 'Employee'}`}
             >
-              <Text style={styles.registerLink}>Register Here</Text>
+              <Text style={styles.registerLink}>Register as {role === 'agent' ? 'Support Agent' : 'Employee'}</Text>
             </TouchableOpacity>
           </View>
         </View>

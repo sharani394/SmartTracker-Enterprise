@@ -59,10 +59,11 @@ export default function EmailVerificationScreen({ navigation, route }) {
             keyboardType="number-pad"
             maxLength={6}
             autoCapitalize="none"
+            accessibilityLabel="Six-digit email verification code"
           />
           <Text style={styles.message}>{message}</Text>
           {verifiedUser ? (
-            <TouchableOpacity style={styles.button} onPress={() => navigation.replace(destination)}>
+            <TouchableOpacity style={styles.button} onPress={() => navigation.replace(destination, route.params?.destinationParams)}>
               <Text style={styles.buttonText}>Continue to sign in</Text>
             </TouchableOpacity>
           ) : (

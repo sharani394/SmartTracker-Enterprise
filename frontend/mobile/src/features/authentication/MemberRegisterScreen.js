@@ -44,14 +44,14 @@ const experienceOptions = [
   'More than 10 years',
 ];
 
-export default function MemberRegisterScreen({ navigation }) {
+export default function MemberRegisterScreen({ navigation, route }) {
   const [form, setForm] = useState({
     organisationName: '',
     email: '',
     fullName: '',
     phone: '',
     employeeId: '',
-    accountType: '',
+    accountType: accountTypes.includes(route.params?.accountType) ? route.params.accountType : '',
     department: '',
     jobTitle: '',
     skills: '',
@@ -82,24 +82,22 @@ export default function MemberRegisterScreen({ navigation }) {
   };
 
   const validateForm = () => {
-    const requiredFields = [
-      'organisationName',
-      'email',
-      'fullName',
-      'phone',
-      'accountType',
-      'department',
-      'jobTitle',
-      'experience',
-      'password',
-      'confirmPassword',
-    ];
-
-    for (const field of requiredFields) {
-      if (!form[field].trim()) {
-        showMessage('Missing information', 'Please complete all required fields.');
-        return false;
-      }
+    const requiredFields = {
+      organisationName: 'Organisation Name',
+      email: 'Official Company Email',
+      fullName: 'Full Name',
+      phone: 'Phone Number',
+      accountType: 'Account Type',
+      department: 'Department / Technical Domain',
+      jobTitle: 'Job Title / Designation',
+      experience: 'Years of Experience',
+      password: 'Password',
+      confirmPassword: 'Confirm Password',
+    };
+    const missingField = Object.entries(requiredFields).find(([field]) => !form[field].trim());
+    if (missingField) {
+      showMessage('Missing information', `${missingField[1]} is required.`);
+      return false;
     }
 
     const email = form.email.trim().toLowerCase();
@@ -139,7 +137,11 @@ export default function MemberRegisterScreen({ navigation }) {
         jobTitle: form.jobTitle.trim(), experience: form.experience, skills: form.skills.trim(), password: form.password,
       });
       showMessage('Registration submitted', result.message || 'Verify your company email. Your organisation administrator must approve your registration.');
-      navigation.navigate('EmailVerification', { email, destination: 'MemberLogin', accountType: 'member' });
+      navigation.navigate('EmailVerification', {
+        email,
+        destination: 'MemberLogin',
+        destinationParams: { accountType: form.accountType },
+      });
     } catch (error) {
       showMessage('Registration failed', apiMessage(error));
     } finally {
@@ -171,6 +173,8 @@ export default function MemberRegisterScreen({ navigation }) {
         keyboardType={options.keyboardType || 'default'}
         autoCapitalize={options.autoCapitalize || 'sentences'}
         autoCorrect={false}
+        autoComplete={options.autoComplete}
+        accessibilityLabel={label}
         secureTextEntry={options.secure && !showPassword}
         multiline={options.multiline || false}
         numberOfLines={options.numberOfLines || 1}
@@ -185,6 +189,8 @@ export default function MemberRegisterScreen({ navigation }) {
       <Pressable
         style={styles.dropdown}
         onPress={() => openDropdown(field, options)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${form[field] || placeholder}`}
       >
         <Text
           style={[
@@ -261,14 +267,15 @@ export default function MemberRegisterScreen({ navigation }) {
                 {
                   keyboardType: 'email-address',
                   autoCapitalize: 'none',
+                  autoComplete: 'email',
                 }
               )}
 
               <View style={styles.hintBox}>
                 <Text style={styles.hintText}>
-                  Use your organisation's official email address.
-                  Your organisation and email domain will be verified.
-                  No registration OTP is required for this process.
+                  Use your organisation's official email address and enter the registered workspace name exactly.
+                  Your email domain and organisation will be checked before registration. After submitting,
+                  enter the six-digit verification code sent to your email, then wait for Admin approval.
                 </Text>
               </View>
             </View>
@@ -289,7 +296,7 @@ export default function MemberRegisterScreen({ navigation }) {
                 'Phone Number',
                 'phone',
                 'Enter your phone number',
-                { keyboardType: 'phone-pad' }
+                { keyboardType: 'phone-pad', autoComplete: 'tel' }
               )}
 
               {renderInput(
@@ -358,6 +365,7 @@ export default function MemberRegisterScreen({ navigation }) {
                 {
                   secure: true,
                   autoCapitalize: 'none',
+                  autoComplete: 'new-password',
                 }
               )}
 
@@ -368,11 +376,14 @@ export default function MemberRegisterScreen({ navigation }) {
                 {
                   secure: true,
                   autoCapitalize: 'none',
+                  autoComplete: 'new-password',
                 }
               )}
 
               <Pressable
                 onPress={() => setShowPassword(!showPassword)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide passwords' : 'Show passwords'}
               >
                 <Text style={styles.showPassword}>
                   {showPassword ? 'Hide passwords' : 'Show passwords'}
@@ -387,12 +398,12 @@ export default function MemberRegisterScreen({ navigation }) {
               </Text>
 
               <Text style={styles.approvalText}>
-                1. Your organisation and company email are verified.
+                1. We check that your organisation name and company email domain match a registered workspace.
                 {'\n\n'}
-                2. An email verification link or OTP is sent to you.
+                2. We send a six-digit verification code to your company email.
                 {'\n\n'}
-                3. After email verification, your request is sent to
-                your organisation Admin.
+                3. After you verify your email, your request is sent to
+                your organisation Admin for approval.
                 {'\n\n'}
                 4. You can access SmartTracker after the Admin accepts
                 your registration.
@@ -417,7 +428,9 @@ export default function MemberRegisterScreen({ navigation }) {
               </Text>
 
               <Pressable
-                onPress={() => navigation.navigate('MemberLogin')}
+                onPress={() => navigation.navigate('MemberLogin', { accountType: form.accountType })}
+                accessibilityRole="button"
+                accessibilityLabel={`Sign in as ${form.accountType || 'Employee'}`}
               >
                 <Text style={styles.loginLink}>Sign in</Text>
               </Pressable>
