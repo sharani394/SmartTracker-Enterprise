@@ -312,12 +312,55 @@ export default function OwnerDashboardScreen({ navigation }) {
 
         {[
           ['Organisation Name', orgForm.name], ['Official Email Domain', organisation?.emailDomain || '—'],
-          ['Industry', orgForm.industry], ['Country', orgForm.country], ['Workspace Status', organisation?.status || '—'],
+          ['Industry', orgForm.industry], ['Country', orgForm.country],
         ].map(([label, value]) => <View style={styles.detailRow} key={label}><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value || '—'}</Text></View>)}
-        {['name', 'industry', 'country', 'supportEmail', 'timezone'].map((field) => <TextInput key={field} style={styles.orgInput} placeholder={field === 'timezone' ? 'Timezone (IANA, e.g. Asia/Kolkata)' : field === 'supportEmail' ? 'Support email' : field[0].toUpperCase() + field.slice(1)} value={orgForm[field]} onChangeText={(value) => setOrgForm((previous) => ({ ...previous, [field]: value }))} autoCapitalize="none" />)}
+        <View style={styles.statusDetail}>
+          <Text style={styles.detailLabel}>Workspace Status</Text>
+          <Text style={[
+            styles.statusBadge,
+            organisation?.status === 'ACTIVE' ? styles.statusBadgeActive : styles.statusBadgeOther,
+          ]}>
+            {(organisation?.status || 'UNKNOWN').replaceAll('_', ' ')}
+          </Text>
+          <Text style={styles.statusHelp}>
+            {organisation?.status === 'ACTIVE'
+              ? 'Your workspace is active. Approved members can sign in and use SmartTracker.'
+              : organisation?.status === 'PENDING_VERIFICATION'
+                ? 'Your workspace is waiting for email verification before members can use it.'
+                : organisation?.status === 'SUSPENDED'
+                  ? 'Workspace access is suspended, so members cannot sign in.'
+                  : 'Workspace status is currently unavailable.'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Update Organisation Details</Text>
+        <Text style={styles.panelDescription}>These fields update your organisation profile. The official email domain and workspace status are managed separately.</Text>
+        {[
+          ['Organisation Name', 'name'],
+          ['Industry', 'industry'],
+          ['Country', 'country'],
+          ['Support Email', 'supportEmail'],
+          ['Timezone', 'timezone'],
+        ].map(([label, field]) => (
+          <View key={field} style={styles.inputField}>
+            <Text style={styles.inputLabel}>{label}</Text>
+            <TextInput
+              style={styles.orgInput}
+              placeholder={field === 'timezone' ? 'e.g. Asia/Kolkata' : `Enter ${label.toLowerCase()}`}
+              value={orgForm[field]}
+              onChangeText={(value) => setOrgForm((previous) => ({ ...previous, [field]: value }))}
+              autoCapitalize="none"
+              accessibilityLabel={label}
+            />
+            {field === 'timezone' ? <Text style={styles.inputHelp}>Use an IANA timezone, such as Asia/Kolkata or UTC.</Text> : null}
+          </View>
+        ))}
 
         <TouchableOpacity
           style={styles.primaryButton}
+          disabled={savingOrg}
           onPress={async () => {
             setSavingOrg(true);
             try { const changes = Object.fromEntries(Object.entries(orgForm).filter(([key, value]) => ['name', 'industry', 'country'].includes(key) || value.trim())); await updateOrganisationSettings(changes); await refreshOwnerData(); }
@@ -326,7 +369,7 @@ export default function OwnerDashboardScreen({ navigation }) {
           }}
         >
           <Text style={styles.primaryButtonText}>
-            Edit Organisation Details
+            {savingOrg ? 'Saving…' : 'Save Organisation Details'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -955,7 +998,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 13,
   },
-  orgInput: { minHeight: 44, borderWidth: 1, borderColor: '#DDE4EF', borderRadius: 9, paddingHorizontal: 12, color: '#27344D', marginTop: 10, backgroundColor: '#FFFFFF' },
+  orgInput: { minHeight: 44, borderWidth: 1, borderColor: '#DDE4EF', borderRadius: 9, paddingHorizontal: 12, color: '#27344D', marginTop: 6, backgroundColor: '#FFFFFF' },
+  inputField: { marginTop: 13 },
+  inputLabel: { color: '#526078', fontSize: 12, fontWeight: '700' },
+  inputHelp: { color: '#8792A5', fontSize: 10, lineHeight: 15, marginTop: 5 },
   codeValue: { color: '#16845B', fontSize: 18, fontWeight: '800', marginTop: 12 },
   actionRow: {
     flexDirection: 'row',
@@ -994,6 +1040,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginTop: 5,
+  },
+  statusDetail: {
+    paddingTop: 13,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    borderRadius: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  statusBadgeActive: {
+    color: '#126B49',
+    backgroundColor: '#E8F7EF',
+  },
+  statusBadgeOther: {
+    color: '#8B5A12',
+    backgroundColor: '#FFF3E5',
+  },
+  statusHelp: {
+    color: '#788499',
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 7,
   },
   personRow: {
     flexDirection: 'row',
