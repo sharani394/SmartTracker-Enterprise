@@ -8,7 +8,12 @@ const assert = require('node:assert/strict');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../src/app');
-const { connectDatabase, disconnectDatabase, removeLegacyTicketSequenceIndex } = require('../src/config/database');
+const {
+  connectDatabase,
+  disconnectDatabase,
+  removeLegacyUniqueIndexes,
+  ensureUniquePasswordResetUserIndex,
+} = require('../src/config/database');
 const Organisation = require('../src/models/Organisation');
 const User = require('../src/models/User');
 const Session = require('../src/models/Session');
@@ -21,6 +26,7 @@ const Ticket = require('../src/models/Ticket');
 const TicketComment = require('../src/models/TicketComment');
 const TicketActivity = require('../src/models/TicketActivity');
 const Notification = require('../src/models/Notification');
+const PasswordReset = require('../src/models/PasswordReset');
 const emailService = require('../src/services/emailService');
 
 const sentCodes = [];
@@ -66,25 +72,42 @@ const auth = (token) => ({ Authorization: `Bearer ${token}` });
 
 before(async () => {
   await connectDatabase();
-  await Promise.all([Organisation.init(), User.init(), Session.init(), EmailVerification.init(), PrimaryAdminCode.init(), Department.init(), AuditEvent.init(), AdminInvitation.init(), Ticket.init(), TicketComment.init(), TicketActivity.init(), Notification.init()]);
+  await Promise.all([Organisation.init(), User.init(), Session.init(), EmailVerification.init(), PasswordReset.init(), PrimaryAdminCode.init(), Department.init(), AuditEvent.init(), AdminInvitation.init(), Ticket.init(), TicketComment.init(), TicketActivity.init(), Notification.init()]);
 });
 beforeEach(async () => {
   sentCodes.length = 0;
-  await Promise.all([Organisation.deleteMany({}), User.deleteMany({}), Session.deleteMany({}), EmailVerification.deleteMany({}), PrimaryAdminCode.deleteMany({}), Department.deleteMany({}), AuditEvent.deleteMany({}), AdminInvitation.deleteMany({}), Ticket.deleteMany({}), TicketComment.deleteMany({}), TicketActivity.deleteMany({}), Notification.deleteMany({})]);
+  await Promise.all([Organisation.deleteMany({}), User.deleteMany({}), Session.deleteMany({}), EmailVerification.deleteMany({}), PasswordReset.deleteMany({}), PrimaryAdminCode.deleteMany({}), Department.deleteMany({}), AuditEvent.deleteMany({}), AdminInvitation.deleteMany({}), Ticket.deleteMany({}), TicketComment.deleteMany({}), TicketActivity.deleteMany({}), Notification.deleteMany({})]);
 });
 after(async () => { await disconnectDatabase(); });
 
-test('database startup removes only the obsolete unique ticket sequence index', async () => {
-  await Ticket.collection.createIndex(
-    { organisationId: 1, sequence: 1 },
-    { unique: true, name: 'organisationId_1_sequence_1' }
-  );
+test('database startup removes obsolete unique indexes without dropping current constraints', async () => {
+  const legacyIndexes = [
+    [Ticket.collection, { organisationId: 1, sequence: 1 }, 'organisationId_1_sequence_1'],
+    [Department.collection, { organisationId: 1, normalizedName: 1 }, 'organisationId_1_normalizedName_1'],
+    [Organisation.collection, { slug: 1 }, 'slug_1'],
+    [PasswordReset.collection, { tokenHash: 1 }, 'tokenHash_1'],
+    [User.collection, { organisationId: 1, email: 1 }, 'organisationId_1_email_1'],
+  ];
+  for (const [collection, key, name] of legacyIndexes) {
+    await collection.createIndex(key, { unique: true, name });
+  }
 
-  await removeLegacyTicketSequenceIndex();
+  await removeLegacyUniqueIndexes();
 
-  const indexes = await Ticket.collection.indexes();
-  assert.equal(indexes.some((index) => index.name === 'organisationId_1_sequence_1'), false);
-  assert.equal(indexes.some((index) => index.name === 'organisationId_1_ticketNumber_1' && index.unique), true);
+  for (const [collection, , name] of legacyIndexes) {
+    const indexes = await collection.indexes();
+    assert.equal(indexes.some((index) => index.name === name), false, `${name} should be removed`);
+  }
+  const ticketIndexes = await Ticket.collection.indexes();
+  assert.equal(ticketIndexes.some((index) => index.name === 'organisationId_1_ticketNumber_1' && index.unique), true);
+  const userIndexes = await User.collection.indexes();
+  assert.equal(userIndexes.some((index) => index.name === 'email_1' && index.unique), true);
+
+  await PasswordReset.collection.dropIndex('userId_1');
+  await PasswordReset.collection.createIndex({ userId: 1 }, { name: 'userId_1' });
+  await ensureUniquePasswordResetUserIndex();
+  const resetIndexes = await PasswordReset.collection.indexes();
+  assert.equal(resetIndexes.some((index) => index.name === 'userId_1' && index.unique), true);
 });
 
 test('ticket lifecycle enforces role ownership, tracks activity, separates internal notes and scopes notifications', async () => {
