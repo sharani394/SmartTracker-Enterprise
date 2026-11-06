@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { organisationService } from '../../services/organisationService';
@@ -162,7 +163,7 @@ export default function OwnerDashboardScreen({ navigation }) {
         </View>
 
         <Text style={styles.smallNote}>
-          {loading ? 'Loading organisation data…' : dashboardError || `Ticket count in current report range: ${ownerReport?.totals?.tickets ?? '—'}.`}
+          {loading ? 'Loading organisation data…' : `Ticket count in current report range: ${ownerReport?.totals?.tickets ?? '—'}.`}
         </Text>
       </View>
 
@@ -529,15 +530,17 @@ export default function OwnerDashboardScreen({ navigation }) {
         <TouchableOpacity
           style={styles.profileButton}
           onPress={() => navigation.navigate('OwnerProfile')}
+          accessibilityRole="button"
+          accessibilityLabel="Open owner profile"
         >
-          <Text style={styles.profileInitial}>O</Text>
+          <Text style={styles.profileInitial}>{user?.fullName?.trim()?.[0]?.toUpperCase() || 'O'}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.welcomeBanner}>
         <View style={{ flex: 1 }}>
           <Text style={styles.welcomeLabel}>ORGANISATION OWNER</Text>
-          <Text style={styles.welcomeTitle}>Welcome back!</Text>
+          <Text style={styles.welcomeTitle}>Welcome back{user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''}!</Text>
           <Text style={styles.welcomeDescription}>
             Manage your workspace from one place.
           </Text>
@@ -593,6 +596,29 @@ export default function OwnerDashboardScreen({ navigation }) {
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
       >
+        {loading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#3157D5" />
+            <Text style={styles.loadingText}>Refreshing your workspace…</Text>
+          </View>
+        ) : null}
+        {dashboardError ? (
+          <View style={styles.errorBanner}>
+            <View style={styles.errorCopy}>
+              <Text style={styles.errorTitle}>Some organisation data could not be loaded</Text>
+              <Text style={styles.errorMessage}>{dashboardError}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={refreshOwnerData}
+              disabled={loading}
+              style={styles.retryButton}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading organisation data"
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {renderContent()}
 
         <TouchableOpacity
@@ -671,6 +697,9 @@ const styles = StyleSheet.create({
   welcomeBanner: {
     backgroundColor: '#263F91',
     margin: 16,
+    width: '96%',
+    maxWidth: 1120,
+    alignSelf: 'center',
     borderRadius: 17,
     padding: 20,
     flexDirection: 'row',
@@ -738,7 +767,18 @@ const styles = StyleSheet.create({
   contentInner: {
     padding: 16,
     paddingBottom: 30,
+    width: '100%',
+    maxWidth: 1152,
+    alignSelf: 'center',
   },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, gap: 9 },
+  loadingText: { color: '#68758B', fontSize: 12 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F0', borderWidth: 1, borderColor: '#F6D0CC', borderRadius: 10, padding: 12, marginBottom: 14, gap: 12 },
+  errorCopy: { flex: 1 },
+  errorTitle: { color: '#9F2D25', fontSize: 12, fontWeight: '800' },
+  errorMessage: { color: '#85423D', fontSize: 11, lineHeight: 16, marginTop: 4 },
+  retryButton: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E7B8B3', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12 },
+  retryText: { color: '#9F2D25', fontSize: 11, fontWeight: '800' },
   sectionHeading: {
     marginBottom: 18,
   },

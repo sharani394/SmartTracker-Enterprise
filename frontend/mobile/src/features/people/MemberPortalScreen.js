@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useTickets } from '../../context/TicketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -40,6 +40,7 @@ export default function MemberPortalScreen({ navigation, route }) {
     addComment,
     markNotificationsRead,
     setNotificationRead,
+    refreshAll,
     isLoading: isTicketLoading,
     error: ticketError,
   } = useTickets();
@@ -100,7 +101,7 @@ export default function MemberPortalScreen({ navigation, route }) {
 
   const submitTicket = async () => {
     if (!title.trim() || !description.trim()) {
-      Alert.alert('Missing details', 'Enter the ticket title and description.');
+      showMessage('Missing details', 'Enter the ticket title and description.');
       return;
     }
 
@@ -143,7 +144,7 @@ export default function MemberPortalScreen({ navigation, route }) {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      Alert.alert('Reason required', 'Please enter a reason for rejecting.');
+      showMessage('Reason required', 'Please enter a reason for rejecting.');
       return;
     }
 
@@ -162,7 +163,7 @@ export default function MemberPortalScreen({ navigation, route }) {
     if (!selectedTicket || !isAgent) return;
 
     if (selectedTicket.acceptance !== 'Accepted') {
-      Alert.alert(
+      showMessage(
         'Accept ticket first',
         'Accept this assignment before updating its status.'
       );
@@ -703,6 +704,8 @@ export default function MemberPortalScreen({ navigation, route }) {
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === tab }}
             onPress={() => {
               setActiveTab(tab);
           if (tab === 'Notifications') markNotificationsRead().catch((error) => showMessage('Could not update notifications', apiMessage(error)));
@@ -720,8 +723,26 @@ export default function MemberPortalScreen({ navigation, route }) {
         contentContainerStyle={styles.contentContainer}
         keyboardShouldPersistTaps="handled"
       >
-        {isTicketLoading ? <Text style={styles.emptyText}>Loading your workspace…</Text> : null}
-        {ticketError ? <Text style={styles.errorText}>{apiMessage(ticketError)}</Text> : null}
+        {isTicketLoading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={GREEN} />
+            <Text style={styles.loadingText}>Loading your workspace…</Text>
+          </View>
+        ) : null}
+        {ticketError ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{apiMessage(ticketError)}</Text>
+            <TouchableOpacity
+              onPress={() => refreshAll().catch((error) => showMessage('Could not refresh workspace', apiMessage(error)))}
+              disabled={isTicketLoading}
+              style={styles.retryButton}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading tickets and notifications"
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {renderContent()}
 
         <TouchableOpacity
@@ -746,6 +767,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 48,
     paddingBottom: 16,
+    width: '100%',
+    maxWidth: 1024,
+    alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -797,6 +821,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: 'center',
     gap: 8,
+    width: '100%',
+    maxWidth: 1024,
+    alignSelf: 'center',
   },
   tab: {
     paddingHorizontal: 13,
@@ -821,7 +848,12 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 18,
     paddingBottom: 35,
+    width: '100%',
+    maxWidth: 1024,
+    alignSelf: 'center',
   },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, gap: 9 },
+  loadingText: { color: '#68758B', fontSize: 12 },
   pageTitle: {
     color: '#17233D',
     fontSize: 24,
@@ -1093,7 +1125,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 25,
   },
-  errorText: { color: '#B42318', fontSize: 13, marginVertical: 10 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F0', borderWidth: 1, borderColor: '#F6D0CC', borderRadius: 10, padding: 12, marginBottom: 14, gap: 12 },
+  errorText: { color: '#B42318', fontSize: 12, lineHeight: 18, flex: 1, marginVertical: 4 },
+  retryButton: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E7B8B3', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12 },
+  retryText: { color: '#9F2D25', fontSize: 11, fontWeight: '800' },
   successText: { color: GREEN, fontSize: 13, marginVertical: 10 },
   backLink: {
     marginBottom: 16,

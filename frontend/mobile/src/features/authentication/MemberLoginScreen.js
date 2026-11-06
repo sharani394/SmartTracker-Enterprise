@@ -84,6 +84,9 @@ export default function MemberLoginScreen({ navigation }) {
                 styles.roleButton,
                 role === 'employee' && styles.selectedRole,
               ]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: role === 'employee' }}
+              accessibilityLabel="Employee sign in"
               onPress={() => setRole('employee')}
             >
               <Text style={styles.roleIcon}>👤</Text>
@@ -103,6 +106,9 @@ export default function MemberLoginScreen({ navigation }) {
                 styles.roleButton,
                 role === 'agent' && styles.selectedRole,
               ]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: role === 'agent' }}
+              accessibilityLabel="Support Agent sign in"
               onPress={() => setRole('agent')}
             >
               <Text style={styles.roleIcon}>🛠️</Text>
@@ -129,6 +135,7 @@ export default function MemberLoginScreen({ navigation }) {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
+            accessibilityLabel="Company Email"
             returnKeyType="next"
           />
 
@@ -143,12 +150,15 @@ export default function MemberLoginScreen({ navigation }) {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoComplete="current-password"
+              accessibilityLabel="Password"
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
 
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             >
               <Text style={styles.showText}>
                 {showPassword ? 'Hide' : 'Show'}
@@ -165,7 +175,7 @@ export default function MemberLoginScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading}
             accessibilityRole="button"
@@ -355,6 +365,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loginButtonDisabled: { opacity: 0.65 },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 15,

@@ -83,6 +83,7 @@ export default function OwnerLoginScreen({ navigation }) {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
+            accessibilityLabel="Company Email"
             returnKeyType="next"
           />
 
@@ -109,12 +110,15 @@ export default function OwnerLoginScreen({ navigation }) {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoComplete="current-password"
+              accessibilityLabel="Password"
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
 
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             >
               <Text style={styles.showText}>
                 {showPassword ? 'Hide' : 'Show'}
@@ -123,7 +127,7 @@ export default function OwnerLoginScreen({ navigation }) {
           </View>
 
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading}
             accessibilityRole="button"
@@ -282,6 +286,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loginButtonDisabled: { opacity: 0.65 },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 16,

@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTickets } from '../../context/TicketContext';
@@ -17,7 +18,7 @@ import { organisationService } from '../../services/organisationService';
 import { reportService } from '../../services/reportService';
 import { auditService } from '../../services/auditService';
 import { knowledgeBaseService } from '../../services/knowledgeBaseService';
-import { apiMessage } from '../../utils/feedback';
+import { apiMessage, showMessage } from '../../utils/feedback';
 
 const menuItems = [
   { id: 'overview', label: 'Overview', icon: '▦' },
@@ -118,11 +119,7 @@ export default function AdminDashboardScreen({ navigation }) {
 
 
   const notify = (title, message) => {
-    if (Platform.OS === 'web') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
+    showMessage(title, message);
   };
 
   const toUserCard = (person) => ({ ...person, name: person.fullName, status: ({ PENDING_APPROVAL: 'Pending', ACTIVE: 'Active', SUSPENDED: 'Inactive', REJECTED: 'Rejected', PENDING_EMAIL: 'Pending Email' })[person.status] || person.status, role: (person.requestedRole || person.role) === 'SUPPORT_AGENT' ? 'Support Agent' : 'Employee' });
@@ -1128,8 +1125,29 @@ export default function AdminDashboardScreen({ navigation }) {
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
       >
-        {pageLoading ? <Text style={styles.emptyText}>Loading organisation data…</Text> : null}
-        {apiError ? <Text style={styles.apiError}>{apiError}</Text> : null}
+        {pageLoading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#3157D5" />
+            <Text style={styles.loadingText}>Refreshing your workspace…</Text>
+          </View>
+        ) : null}
+        {apiError ? (
+          <View style={styles.errorBanner}>
+            <View style={styles.errorCopy}>
+              <Text style={styles.errorTitle}>Some workspace data could not be loaded</Text>
+              <Text style={styles.errorMessage}>{apiError}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={loadOperations}
+              disabled={pageLoading}
+              style={styles.retryButton}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading workspace data"
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {renderContent()}
 
         <TouchableOpacity
@@ -1189,6 +1207,9 @@ const styles = StyleSheet.create({
   welcomeBanner: {
     backgroundColor: '#263F91',
     margin: 16,
+    width: '96%',
+    maxWidth: 1120,
+    alignSelf: 'center',
     borderRadius: 17,
     padding: 20,
     flexDirection: 'row',
@@ -1225,7 +1246,7 @@ const styles = StyleSheet.create({
   navLabel: { color: '#68758B', fontSize: 11, fontWeight: '600' },
   navLabelActive: { color: '#3157D5', fontWeight: '800' },
   content: { flex: 1 },
-  contentInner: { padding: 16, paddingBottom: 35 },
+  contentInner: { padding: 16, paddingBottom: 35, width: '100%', maxWidth: 1152, alignSelf: 'center' },
   heading: { marginBottom: 18 },
   headingTitle: { color: '#17233D', fontSize: 22, fontWeight: '800' },
   headingSubtitle: { color: '#788499', fontSize: 12, lineHeight: 18, marginTop: 5 },
@@ -1332,6 +1353,14 @@ const styles = StyleSheet.create({
   mutedText: { color: '#8792A5', fontSize: 10, marginTop: 7 },
   linkText: { color: '#3157D5', fontSize: 11, fontWeight: '800' },
   emptyText: { color: '#8792A5', textAlign: 'center', padding: 25 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, gap: 9 },
+  loadingText: { color: '#68758B', fontSize: 12 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F0', borderWidth: 1, borderColor: '#F6D0CC', borderRadius: 10, padding: 12, marginBottom: 14, gap: 12 },
+  errorCopy: { flex: 1 },
+  errorTitle: { color: '#9F2D25', fontSize: 12, fontWeight: '800' },
+  errorMessage: { color: '#85423D', fontSize: 11, lineHeight: 16, marginTop: 4 },
+  retryButton: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E7B8B3', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12 },
+  retryText: { color: '#9F2D25', fontSize: 11, fontWeight: '800' },
   back: { color: '#3157D5', fontWeight: '700', marginBottom: 18 },
   detailRow: {
     flexDirection: 'row',
@@ -1386,7 +1415,6 @@ const styles = StyleSheet.create({
   },
   settingLabel: { color: '#526078', fontSize: 12 },
   note: { color: '#929CAE', fontSize: 10, lineHeight: 16, marginTop: 10 },
-  apiError: { color: '#B42318', backgroundColor: '#FDECEC', padding: 11, borderRadius: 8, marginBottom: 12 },
   signOutButton: {
     padding: 14,
     borderRadius: 10,
