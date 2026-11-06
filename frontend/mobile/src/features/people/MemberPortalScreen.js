@@ -201,10 +201,7 @@ export default function MemberPortalScreen({ navigation, route }) {
       <View style={styles.headerActions}>
         <TouchableOpacity
           style={styles.notificationButton}
-          onPress={() => {
-            setActiveTab('Notifications');
-            markNotificationsRead().catch((error) => showMessage('Could not update notifications', apiMessage(error)));
-          }}
+          onPress={() => setActiveTab('Notifications')}
           accessibilityRole="button"
           accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
         >
@@ -719,10 +716,7 @@ export default function MemberPortalScreen({ navigation, route }) {
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === tab }}
-            onPress={() => {
-              setActiveTab(tab);
-          if (tab === 'Notifications') markNotificationsRead().catch((error) => showMessage('Could not update notifications', apiMessage(error)));
-            }}
+            onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
               {tab}
